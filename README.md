@@ -2,7 +2,7 @@
 
 A specification for recursive multi-agent systems grounded in the geometry of LLM knowledge representation.
 
-**[Read the full article (101 sections)](https://yayaxiaohan.github.io/multi-agent-os/)**
+**[Read the full article (101 sections)](https://htmlpreview.github.io/?https://github.com/yayaxiaohan/multi-agent-os/blob/main/article.html)**
 
 ## The one sentence
 

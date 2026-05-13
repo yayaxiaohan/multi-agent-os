@@ -2,6 +2,8 @@
 
 A specification for recursive multi-agent systems grounded in the geometry of LLM knowledge representation.
 
+**[Read the full article (101 sections)](https://yayaxiaohan.github.io/multi-agent-os/)**
+
 ## The one sentence
 
 **The agent system works because folders activate the same subspaces that the model already uses to organize knowledge internally.**

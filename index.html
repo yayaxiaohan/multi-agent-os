@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Subspace-Aligned Multi-Agent Architecture</title>
+    <style>
+        body {
+            font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+            max-width: 740px;
+            margin: 60px auto;
+            padding: 0 30px;
+            line-height: 1.85;
+            color: #1a1a1a;
+            font-size: 16.5px;
+        }
+        h1 { font-size: 1.8em; text-align: center; margin-bottom: 4px; font-weight: normal; }
+        .subtitle { text-align: center; color: #666; font-size: 0.95em; margin-bottom: 50px; }
+        h2 { font-size: 1.15em; margin-top: 42px; font-weight: 600; }
+        p { margin: 10px 0; text-align: justify; }
+        .fig {
+            margin: 22px 0; padding: 14px 20px; background: #fafafa;
+            border: 1px solid #e0e0e0; border-radius: 4px;
+            font-size: 0.9em; line-height: 1.6;
+            font-family: 'Menlo', 'Consolas', monospace; white-space: pre; overflow-x: auto;
+        }
+        .key {
+            margin: 22px 0; padding: 16px 20px; background: #f0f7ff;
+            border-left: 4px solid #0366d6; line-height: 1.85;
+        }
+        .evidence {
+            margin: 22px 0; padding: 16px 20px; background: #f0fff4;
+            border-left: 4px solid #28a745; line-height: 1.85;
+        }
+        .wrong {
+            margin: 22px 0; padding: 16px 20px; background: #fff5f5;
+            border-left: 4px solid #d73a49; line-height: 1.85;
+        }
+        table { border-collapse: collapse; margin: 18px auto; font-size: 0.88em; }
+        th, td { border: 1px solid #bbb; padding: 5px 14px; text-align: center; }
+        th { background: #f5f5f5; font-weight: 600; }
+        td:first-child { text-align: left; }
+        hr { border: none; border-top: 1px solid #ddd; margin: 40px 0; }
+    </style>
+</head>
+<body>
+<!-- date: 2026-05-13 -->
+<div style="text-align:right;color:#999;font-size:0.8em;margin-bottom:-20px;">2026-05-13</div>
+
+<h1>Subspace-Aligned Multi-Agent Architecture</h1>
+<div class="subtitle">
+    A specification for recursive multi-agent systems<br>
+    grounded in the geometry of LLM knowledge representation
+</div>
+<div style="text-align:center; color:#666; font-size:0.85em; margin-top:-30px; margin-bottom:40px;">
+    <br>
+    <b>Abstract.</b> We present seven implementation-free principles for designing multi-agent LLM systems,
+    grounded in the observation that the external organization of agents (folders, identity files, isolation boundaries)
+    can be aligned with the internal organization of knowledge in LLMs (entity subspaces, orthogonal representations,
+    bottleneck filtering). The architecture defines two agent types (leaf and non-leaf), four isolated infrastructure
+    roles (attention, verification, knowledge, communication), and a recursive structure with no fixed depth.
+    Independent evidence from recent work on persistent cognitive agents (arXiv:2604.12016) confirms the core
+    mechanism: identity documents induce attractor-like structure in LLM activation space.
+</div>
+
+<h2>1. The mistake we made</h2>
+
+<p>We designed the system around <b>agents</b>: create agent, write CLAUDE.md, register in agents.md, open a window, dispatch tasks. Because we know how agents work, we made the interface about agents.</p>
+
+<p>But even the designer &mdash; the person who built the system &mdash; doesn't want to manage agents. They want to say "I have a Kaggle competition" and start working.</p>
+
+<div class="wrong">
+<b>The curse of knowledge:</b> Because we understand the implementation, we designed the interface around the implementation. The user sees agents. But the user thinks in tasks.
+</div>
+
+<h2>2. The user's mental model</h2>
+
+<p>The user has <b>tasks</b>. That's it.</p>
+
+<div class="fig">User: "I need to write a resume"           &rarr; task
+User: "I have a Kaggle competition"        &rarr; task
+User: "Continue the resume"                &rarr; task
+User: "How's the Kaggle thing going?"      &rarr; task
+User: "What's the status of everything?"   &rarr; list of tasks</div>
+
+<p>The user never says:</p>
+
+<div class="fig">"Create an agent"                          &rarr; never
+"Open the auto-build window"               &rarr; never
+"Register this in agents.md"               &rarr; never
+"Move these files to the right folder"     &rarr; never</div>
+
+<p>Tasks are the only concept the user needs. Everything else is the system's problem.</p>
+
+<h2>3. The two layers</h2>
+
+<table>
+<tr><th></th><th>User layer</th><th>System layer</th></tr>
+<tr><td>Object</td><td>Task</td><td>Agent</td></tr>
+<tr><td>Interface</td><td>"I want to do X"</td><td>Folder + CLAUDE.md + routing</td></tr>
+<tr><td>Visible?</td><td>Yes</td><td>No</td></tr>
+<tr><td>Who manages?</td><td>User creates by speaking</td><td>System creates automatically</td></tr>
+<tr><td>Analogy</td><td>File</td><td>Process</td></tr>
+</table>
+
+<p>Like an operating system: the user sees files, the OS manages processes. The user creates a file (describes a task). The OS decides which process handles it.</p>
+
+<h2>4. The user experience</h2>
+
+<div class="fig"><b>Day 0: Nothing exists.</b>
+
+User &rarr; Brain: "I need to write a resume for Google."
+Brain:
+  &bull; Creates task: resume-google
+  &bull; Finds no matching agent &rarr; creates resume-writer agent
+  &bull; Opens resume-writer window
+User &harr; resume-writer: "What position are you applying for?"
+  (user talks DIRECTLY to the agent, not through brain)
+
+<b>Day 3: Resume done. User returns to brain.</b>
+
+User &rarr; Brain: "I found a Kaggle competition. ROGII, $50K."
+Brain:
+  &bull; Creates task: rogii
+  &bull; Finds no matching agent &rarr; creates auto-build agent
+  &bull; Opens auto-build window
+User &harr; auto-build: "Got it. Let me look at the data."
+
+<b>Day 10: Two tasks exist.</b>
+
+User &rarr; Brain: "What's going on?"
+Brain:
+  &bull; resume-google: done, PDF ready
+  &bull; rogii: active, iteration 5, RMSE 8.2
+
+User &rarr; Brain: "Update the resume, got a new interview at Meta."
+Brain:
+  &bull; Opens resume-writer window with resume-google context
+User &harr; resume-writer: "Sure. What changed?"
+
+<b>Day 30: Five tasks.</b>
+
+User &rarr; Brain: "Status?"
+Brain:
+  rogii           active    iter 12, RMSE 4.1
+  resume-google   done      PDF v2
+  resume-meta     active    draft in progress
+  entity-research paused    TASK_144 complete
+  paper           active    draft v5</div>
+
+<p>The user talks to the brain to navigate. The brain opens agent windows. The user works directly with the agent. When switching, back to the brain.</p>
+
+<h2>5. What the system does invisibly</h2>
+
+<p>When the user says "I have a new task":</p>
+
+<div class="fig">1. Parse: what is this task about?
+2. Match: does an existing agent handle this domain?
+   &bull; Yes &rarr; launch that agent's window
+   &bull; No  &rarr; create new agent (mkdir, write CLAUDE.md, register)
+3. Create: task folder + TASK.md (from user's words)
+4. Launch: open the agent's window
+5. User works directly with the agent
+6. Return: user comes back, brain reads REPORT.md
+7. Show: user sees status</div>
+
+<p>The user did ONE thing: said a sentence. The system did SIX things. All invisible.</p>
+
+<h2>6. The recursive structure (invisible to user)</h2>
+
+<div class="fig"><b>What the user sees:</b>
+  "My tasks"
+    rogii          active
+    resume-google  done
+
+<b>What the system has:</b>
+  agents/
+    brain/                     &larr; the home window
+      agents.md                &larr; knows about auto-build, resume-writer
+    auto-build/                &larr; launched as separate window
+      CLAUDE.md
+      tasks/
+        rogii/                 &larr; user's task lives here
+          TASK.md
+          REPORT.md
+    resume-writer/             &larr; launched as separate window
+      CLAUDE.md
+      tasks/
+        resume-google/         &larr; user's task lives here
+          TASK.md
+          REPORT.md</div>
+
+<p>The user sees a flat list of tasks. The system has a tree of agents. The mapping between them is the brain's job.</p>
+
+<h2>7. The recursion output</h2>
+
+<p>The recursive contract at every level:</p>
+
+<div class="key">
+<b>Input:</b> TASK.md (flows down)<br>
+<b>Output:</b> REPORT.md (flows up)<br>
+<b>Base case:</b> leaf task &mdash; does the work, writes REPORT.md<br><br>
+
+Every level follows the same contract. Brain &rarr; agent &rarr; sub-agent &rarr; leaf. TASK.md goes down. REPORT.md comes up. The user only sees the top: their task and its status.
+</div>
+
+<h2>8. Auto-isolation</h2>
+
+<p>The system handles isolation automatically:</p>
+
+<div class="fig">User: "New task: ROGII"
+System: creates tasks/rogii/ &larr; isolated by folder
+
+User: "New task: resume for Meta"
+System: creates tasks/resume-meta/ &larr; separate folder, no contamination
+
+User: "Continue ROGII"
+System: loads tasks/rogii/ context &larr; nothing from resume leaks in</div>
+
+<p>Folder = isolation boundary. Folder name = task identifier. The user names the task. The system isolates it.</p>
+
+<h2>9. What this changes</h2>
+
+<div class="wrong">
+<b>Before (agent-first):</b><br>
+User manually: creates agent folder, writes CLAUDE.md, registers in agents.md, opens window, restructures files, manages isolation.<br>
+User's mental load: agents, sub-agents, plan-verify, working, specs, routing.<br>
+Duplicate work every time.
+</div>
+
+<div class="evidence">
+<b>After (task-first):</b><br>
+User says: "I have a task."<br>
+System does everything else.<br>
+User's mental load: what do I want to do?<br>
+Zero duplicate work.
+</div>
+
+<h2>10. What we need to build</h2>
+
+<div class="fig">1. The brain     &mdash; one entry point, routes tasks to agents
+2. Task registry  &mdash; flat list of all user tasks + status
+3. Agent registry &mdash; which agents exist (invisible to user)
+4. Auto-create    &mdash; new task &rarr; create folder + TASK.md
+5. Auto-route     &mdash; match task to agent (or create new one)
+6. Auto-isolate   &mdash; folder per task, no contamination
+7. Context switch  &mdash; "continue X" loads the right folder
+8. Status view    &mdash; "what's going on?" shows all tasks</div>
+
+<p>The brain is the kernel. Tasks are files. Agents are processes. The filesystem is the OS.</p>
+
+<h2>11. The system architecture</h2>
+
+<p>Three components. That's it.</p>
+
+<div class="fig"><b>1. BRAIN</b>  &mdash; understands intent, launches agent windows
+<b>2. AGENTS</b> &mdash; the workers (user interacts directly)
+<b>3. TASKS</b>  &mdash; the work (visible to user)</div>
+
+<h2>12. The brain</h2>
+
+<p>The brain is the home window. The user comes here to navigate, then the brain opens the right agent window. The user works directly with the agent. When done or switching, back to the brain.</p>
+
+<div class="fig"><b>HEAR</b>    &mdash; user says something
+<b>PARSE</b>   &mdash; is this a new task, continue, switch, or status?
+<b>MATCH</b>   &mdash; which agent handles this? (or create one)
+<b>LAUNCH</b>  &mdash; open the agent's window. user talks to agent directly.
+<b>REPORT</b>  &mdash; when user returns, show status from REPORT.md</div>
+
+<p>The brain does NOT do the work. It does NOT proxy the conversation. Like a human brain &mdash; it doesn't move your hand, it directs attention to the right motor program. The hand moves itself.</p>
+
+<p>The brain maintains two files:</p>
+
+<div class="fig">tasks.md    &mdash; what the USER sees (flat list)
+agents.md   &mdash; what the SYSTEM uses (routing table)
+
+tasks.md:
+| task | status | agent | last update |
+| rogii | active | auto-build | iter 5, RMSE 8.2 |
+| resume-google | done | resume-writer | PDF v2 |
+| entity-research | paused | algorithm-optimization | TASK_144 |
+
+agents.md:
+| id | name | domain | path |
+| 01 | auto-build | build systems from eval sets | ../auto-build/ |
+| 02 | resume-writer | write resumes | ../resume-writer/ |
+| 03 | algorithm-optimization | ML pipeline optimization | ../algorithm-optimization/ |</div>
+
+<p><code>tasks.md</code> is the user interface. <code>agents.md</code> is the system internals. The brain maps between them.</p>
+
+<h2>13. The agents</h2>
+
+<p>Each agent is a folder with a standard structure. The user talks directly to the agent in its own window. The agent reads TASK.md for context and writes REPORT.md when done.</p>
+
+<div class="fig">{agent}/
+  CLAUDE.md              &larr; identity: what I am, how I work
+  tasks/
+    {task-name}/         &larr; one folder per task (leaf)
+      TASK.md            &larr; input (from brain)
+      REPORT.md          &larr; output (to brain)
+      ...                &larr; work product</div>
+
+<p>Inside the agent, the recursive structure can go deeper if needed:</p>
+
+<div class="fig">{agent}/
+  CLAUDE.md
+  agents.md              &larr; optional: if agent has sub-agents
+  plan-verify/           &larr; optional: plans and verifies
+    CLAUDE.md
+  working/               &larr; optional: executes
+    CLAUDE.md
+    tasks/
+      {task-name}/
+        TASK.md
+        REPORT.md</div>
+
+<p>But this is the agent's INTERNAL business. The brain doesn't care. The brain only knows: I launch this agent's window, the user works with it, and REPORT.md appears when it's done.</p>
+
+<h2>14. The task lifecycle</h2>
+
+<div class="fig"><b>CREATE</b>
+  User: "I have a Kaggle competition, ROGII, $50K"
+  Brain: parse &rarr; new task
+    1. Create task id: rogii
+    2. Match domain: "competition" + "build system" &rarr; auto-build
+    3. Create: auto-build/tasks/rogii/TASK.md
+    4. Register: add to tasks.md (status: new)
+    5. Launch: open auto-build window, user works directly
+
+<b>CONTINUE</b>
+  User: "Continue rogii"
+  Brain: parse &rarr; existing task
+    1. Find: tasks.md &rarr; rogii &rarr; agent: auto-build
+    2. Launch: open auto-build window with rogii context
+    3. User works directly with auto-build
+
+<b>SWITCH</b>
+  User: "Switch to resume"
+  Brain: parse &rarr; switch
+    1. Update tasks.md for current task
+    2. Find: tasks.md &rarr; resume-google &rarr; agent: resume-writer
+    3. Launch: open resume-writer window
+
+<b>STATUS</b>
+  User: "What's going on?"
+  Brain: read tasks.md
+    rogii           active    iter 12, RMSE 4.1
+    resume-google   done      PDF v2
+    resume-meta     active    draft in progress
+
+<b>COMPLETE</b>
+  Agent writes REPORT.md
+  Brain reads it, updates tasks.md (status: done)
+  User: "How'd rogii go?"
+  Brain: shows REPORT.md</div>
+
+<h2>15. Auto-create agent</h2>
+
+<p>When no existing agent matches the task:</p>
+
+<div class="fig">User: "I need to analyze customer churn data"
+Brain:
+  1. Check agents.md &mdash; no agent for "data analysis"
+  2. Create folder: agents/data-analysis/
+  3. Write CLAUDE.md:
+       "# data-analysis
+        Analyze datasets. Read TASK.md for each task.
+        Write results to REPORT.md."
+  4. Register in agents.md
+  5. Create task: data-analysis/tasks/customer-churn/TASK.md
+  6. Launch: open agent window, user works directly</div>
+
+<p>The agent is born from the task. The CLAUDE.md is generated from the task description &mdash; one sentence that scopes the agent. The brain launches the window. The user starts working.</p>
+
+<p>Over time, the agent accumulates tasks:</p>
+
+<div class="fig">data-analysis/
+  CLAUDE.md
+  tasks/
+    customer-churn/      &larr; first task (created the agent)
+    sales-forecast/      &larr; second task (brain routed here)
+    market-segments/     &larr; third task (same domain)</div>
+
+<p>The agent grows organically. No one designed it. Tasks shaped it.</p>
+
+<h2>16. The filesystem is the OS</h2>
+
+<div class="fig"><b>OS concept</b>     &rarr;  <b>Our system</b>
+Kernel             &rarr;  Brain (directs attention, launches)
+Process            &rarr;  Agent (works, isolated)
+File               &rarr;  Task (user's work unit)
+Process table      &rarr;  agents.md
+File table         &rarr;  tasks.md
+Fork               &rarr;  Create new agent
+IPC                &rarr;  TASK.md down, REPORT.md up
+Filesystem         &rarr;  Folder structure</div>
+
+<p>The user interacts with files (tasks). The OS manages processes (agents). The filesystem provides isolation, naming, and navigation. Nothing else is needed.</p>
+
+<h2>17. Current state vs target</h2>
+
+<table>
+<tr><th>Component</th><th>Current</th><th>Target</th></tr>
+<tr><td>Brain</td><td>math-modeling (research only)</td><td>Universal brain (all tasks)</td></tr>
+<tr><td>Task registry</td><td>None</td><td>tasks.md (flat list, user-visible)</td></tr>
+<tr><td>Agent registry</td><td>agents.md (2 agents)</td><td>agents.md (all agents, auto-growing)</td></tr>
+<tr><td>Auto-create</td><td>Manual (user creates folders)</td><td>Automatic (brain creates from task)</td></tr>
+<tr><td>Auto-route</td><td>Manual (user decides which agent)</td><td>Automatic (brain matches domain)</td></tr>
+<tr><td>Auto-isolate</td><td>Manual (user moves files)</td><td>Automatic (folder per task)</td></tr>
+<tr><td>Context switch</td><td>Manual (user opens windows)</td><td>brain.sh launch {agent} (brain opens window)</td></tr>
+<tr><td>Execution agents</td><td>4 structured + 6 standalone + 78 orphans</td><td>All follow standard structure</td></tr>
+</table>
+
+<h2>18. What to build, in order</h2>
+
+<div class="evidence">
+<b>Step 1: tasks.md</b><br>
+Create the task registry. List every ACTIVE task the user has right now. This is the user's interface &mdash; it exists before anything else.
+
+<br><br><b>Step 2: Brain protocol</b><br>
+Write the brain's CLAUDE.md. It reads tasks.md and agents.md. When the user speaks, it parses, matches, launches.
+
+<br><br><b>Step 3: Standard agent structure</b><br>
+Formalize: CLAUDE.md + tasks/{name}/TASK.md + REPORT.md. Apply to the 4 execution agents. Ignore the 78 orphans (they're samples, not agents).
+
+<br><br><b>Step 4: Auto-create</b><br>
+When the brain gets a task that doesn't match any agent, it creates one. mkdir, write CLAUDE.md, register. Mechanical.
+
+<br><br><b>Step 5: Context switch</b><br>
+"Continue X" loads the right task folder. The brain saves and restores context. One window for everything.
+</div>
+
+<p>Each step is small. Each step is immediately useful. Step 1 can be done in 5 minutes.</p>
+
+<h2>19. Agent priority: what should an agent have?</h2>
+
+<p>All agents are flat &mdash; they live in the same folder. There is no hierarchy between agents. The brain is just another agent in the same folder, with one special job: directing attention.</p>
+
+<div class="fig">agents/
+  brain/                  &larr; just another agent, happens to route
+  auto-build/             &larr; flat, same level
+  resume-writer/          &larr; flat, same level
+  algorithm-optimization/ &larr; flat, same level
+  text-to-sql/            &larr; flat, same level</div>
+
+<p>But not all agents need the same things. An agent grows from nothing &mdash; it starts as a folder with a CLAUDE.md and gains capabilities as it needs them. The question is: <b>what's the priority order?</b> What does an agent need FIRST, SECOND, THIRD?</p>
+
+<h2>20. Priority levels</h2>
+
+<div class="key">
+<b>P0 &mdash; Identity (required)</b>
+
+Every agent MUST have this. Without it, it's not an agent &mdash; it's a random folder.
+
+<table>
+<tr><th>What</th><th>File</th><th>Why</th></tr>
+<tr><td>Who am I</td><td>CLAUDE.md</td><td>One paragraph. Any LLM reads this and knows the scope.</td></tr>
+<tr><td>What am I doing</td><td>tasks/</td><td>Folder of tasks. Each task has TASK.md + REPORT.md.</td></tr>
+</table>
+
+Minimum viable agent = CLAUDE.md + tasks/. Nothing else.
+</div>
+
+<div class="evidence">
+<b>P1 &mdash; Delegation (when tasks grow)</b>
+
+When ONE agent can't handle all its tasks alone, it delegates. It becomes a mini-brain with sub-agents.
+
+<table>
+<tr><th>What</th><th>File</th><th>When</th></tr>
+<tr><td>Who's below me</td><td>agents.md</td><td>Agent has sub-agents it dispatches to</td></tr>
+<tr><td>Plan layer</td><td>plan-verify/</td><td>Tasks need planning + verification, not just execution</td></tr>
+<tr><td>Work layer</td><td>working/</td><td>Execution is separated from planning</td></tr>
+</table>
+
+Most agents never need this. Only add when ONE agent doing everything becomes messy.
+</div>
+
+<div class="open">
+<b>P2 &mdash; Knowledge (when the agent learns)</b>
+
+When the agent accumulates knowledge across tasks, it needs a place to store it.
+
+<table>
+<tr><th>What</th><th>File</th><th>When</th></tr>
+<tr><td>How I operate</td><td>specs/</td><td>Protocols, methods, domain-specific rules</td></tr>
+<tr><td>What I've learned</td><td>knowledge/ or docs/</td><td>Cross-task insights, patterns, lessons</td></tr>
+<tr><td>My tools</td><td>tools/</td><td>Reusable code/scripts across tasks</td></tr>
+</table>
+
+Only add when the same knowledge is needed across multiple tasks.
+</div>
+
+<h2>21. Agent lifecycle</h2>
+
+<p>An agent grows organically. It starts minimal and gains structure only when needed.</p>
+
+<div class="fig"><b>Birth</b> &mdash; first task arrives, brain creates agent
+
+  my-agent/
+    CLAUDE.md        "I handle X"
+    tasks/
+      first-task/
+        TASK.md
+                     &larr; this is P0. done.
+
+<b>Growth</b> &mdash; more tasks arrive, agent accumulates knowledge
+
+  my-agent/
+    CLAUDE.md
+    specs/
+      METHOD.md      "How I approach tasks in this domain"
+    tasks/
+      first-task/    done
+      second-task/   active
+      third-task/    new
+                     &larr; this is P0 + P2. specs emerged from experience.
+
+<b>Maturity</b> &mdash; tasks get complex, agent needs delegation
+
+  my-agent/
+    CLAUDE.md
+    agents.md        "My sub-agents"
+    specs/
+    plan-verify/     plans tasks, verifies results
+    working/         executes
+    tasks/
+      ...
+                     &larr; this is P0 + P1 + P2. full structure.
+
+<b>Most agents never reach maturity.</b>
+A simple agent with CLAUDE.md + tasks/ handles 80% of cases.</div>
+
+<h2>22. The brain is P0 + attention</h2>
+
+<p>The brain is a P0 agent with special capabilities: it reads <code>agents.md</code> to match domains, launches agent windows, and maintains the system.</p>
+
+<div class="fig">brain/
+  CLAUDE.md          "I am the brain. I direct attention."
+  tasks.md           user-facing task list (flat)
+  agents.md          system-facing agent list (matching table)
+  tools/
+    brain.sh         the launch mechanism
+  tasks/
+    ...              brain can have its own tasks too (meta-tasks)</div>
+
+<p>The brain doesn't need plan-verify. It doesn't need specs. It reads user input, checks agents.md, launches the right window. P0 + agents.md + tools/brain.sh.</p>
+
+<h2>23. Decision tree: what does my agent need?</h2>
+
+<div class="fig">Does it exist?
+  No  &rarr; Create: CLAUDE.md + tasks/  (P0)
+  Yes &rarr;
+
+Does it have multiple tasks?
+  No  &rarr; P0 is enough
+  Yes &rarr;
+
+Do tasks share knowledge?
+  No  &rarr; P0 is enough (tasks are independent)
+  Yes &rarr; Add specs/ or docs/  (P2)
+
+Are tasks complex enough to need planning + verification?
+  No  &rarr; P0 + P2 is enough
+  Yes &rarr; Add plan-verify/ + working/  (P1)
+
+Does it need sub-agents?
+  No  &rarr; Done
+  Yes &rarr; Add agents.md, create sub-agent folders</div>
+
+<p>Start minimal. Add structure when the pain is real. Not before.</p>
+
+<h2>24. Summary: the full picture</h2>
+
+<div class="fig">agents/                          all agents, flat
+  brain/                         P0 + attention
+    CLAUDE.md                    "I direct attention"
+    tasks.md                     user sees this
+    agents.md                    system uses this
+
+  auto-build/                    P0 + P2 (has specs)
+    CLAUDE.md                    "I build systems from eval sets"
+    LOOP.md                      spec: how the loop works
+    tasks/
+      banking77/                 leaf task (done)
+      rogii/                     leaf task (active)
+
+  resume-writer/                 P0 + P1 (has plan-verify)
+    CLAUDE.md                    "I write resumes"
+    plan-verify/
+    working/
+      tasks/
+        resume-google/           leaf task
+
+  algorithm-optimization/        P0 + P1 + P2 (full)
+    CLAUDE.md                    "I optimize ML pipelines"
+    specs/
+    plan-verify/
+    working/
+      tasks/
+        TASK_074/                leaf task
+
+Every agent: CLAUDE.md + tasks/  (P0, minimum)
+Some agents: + specs/            (P2, when knowledge accumulates)
+Few agents:  + plan-verify/      (P1, when tasks need planning)
+The brain:   + tasks.md + agents.md + tools/brain.sh  (attention + launch)</div>
+
+<h2>25. The #1 characteristic: clean context</h2>
+
+<p>Before identity, before communication, before everything else: <b>clean context.</b></p>
+
+<p>When an LLM opens a folder, it reads the files. Those files become its context. The context IS its mind. The folder determines what the agent thinks about.</p>
+
+<div class="key">
+<b>Clean folder → clean context → focused agent.</b><br>
+<b>Mixed folder → mixed context → confused agent.</b><br><br>
+The folder doesn't organize files. The folder organizes the agent's THINKING.
+</div>
+
+<p>This isn't a design choice. It's aligned with how the model works. From our research:</p>
+
+<div class="fig">Model internals:
+  Each entity → own subspace (cos 0.92 stable)
+  L14 bottleneck → filters noise, keeps structure
+  Clean input → clean representation → correct output
+
+Agent architecture:
+  Each agent → own folder (isolated)
+  CLAUDE.md → defines scope, filters irrelevant content
+  Clean folder → clean context → focused work
+
+Same principle. The folder structure maps to the model's
+internal structure. Clean subspaces = clean folders.</div>
+
+<p>The model reads "auto-build/" and activates the right knowledge. It reads "math-modeling/" and activates different knowledge. The folder name IS the entity label. CLAUDE.md IS the entity definition. The files ARE the subspace.</p>
+
+<p>This is why isolation matters: not for file management, but for <b>cognitive hygiene</b>. A mixed folder is a noisy subspace — the model can't think straight.</p>
+
+<h2>26. What makes a good agent</h2>
+
+<p>We're designing an OS. Every process in a real OS has certain properties: identity, memory space, I/O channels, state, isolation. What are the equivalent properties for our agents?</p>
+
+<table>
+<tr><th>Property</th><th>Unix process</th><th>Our agent</th><th>How</th></tr>
+<tr><td>Identity</td><td>PID + binary name</td><td>Folder name + CLAUDE.md</td><td>Name says what I am. CLAUDE.md says how I work.</td></tr>
+<tr><td>Scope</td><td>Single responsibility</td><td>CLAUDE.md says what I do AND what I don't</td><td>"I am X. I am NOT Y."</td></tr>
+<tr><td>Communication</td><td>stdin / stdout</td><td>TASK.md in / REPORT.md out</td><td>Standard contract. Any agent can talk to any agent.</td></tr>
+<tr><td>Isolation</td><td>Separate memory space</td><td>Own folder. Own data. Own tasks.</td><td>Nothing leaks between agents.</td></tr>
+<tr><td>State</td><td>Running / sleeping / stopped</td><td>Task status: active / paused / done</td><td>Visible in tasks.md. Persistent in files, not in memory.</td></tr>
+<tr><td>Memory</td><td>Heap + stack</td><td>Files that persist across sessions</td><td>Agent forgets nothing — everything is on disk.</td></tr>
+<tr><td>Observability</td><td>ps, top, logs</td><td>REPORT.md, logs/, task status</td><td>Can check progress without interrupting.</td></tr>
+<tr><td>Recoverability</td><td>Restart from checkpoint</td><td>State in files → can always resume</td><td>Kill the terminal, open a new one, read the files, continue.</td></tr>
+<tr><td>Composability</td><td>Pipes: cmd1 | cmd2</td><td>REPORT.md of agent A becomes TASK.md of agent B</td><td>Standard interface makes agents chainable.</td></tr>
+</table>
+
+<h2>27. The nine characteristics</h2>
+
+<div class="key">
+<b>1. Self-aware.</b> The agent knows what it is. CLAUDE.md tells it. Any LLM opens the folder, reads CLAUDE.md, and becomes the agent. The identity is in the file, not in the model.
+</div>
+
+<div class="key">
+<b>2. Scoped.</b> The agent knows its boundary. "I handle X. I do NOT handle Y." This prevents scope creep. When a task doesn't fit, the agent says so — the brain routes it elsewhere.
+</div>
+
+<div class="key">
+<b>3. Communicable.</b> Standard I/O. TASK.md goes in. REPORT.md comes out. Any agent can send a task to any other agent. The format is universal. No custom APIs between agents.
+</div>
+
+<div class="key">
+<b>4. Isolated.</b> Own folder. Own data. Own tasks. Agent A can't accidentally read agent B's files. The folder boundary IS the isolation. No shared state except through explicit file exchange.
+</div>
+
+<div class="key">
+<b>5. Stateful.</b> Everything is on disk. The agent can be killed and restarted. A new LLM session opens the folder, reads the files, and picks up where the last session left off. Memory is files, not context windows.
+</div>
+
+<div class="key">
+<b>6. Observable.</b> You can check the agent's progress without interrupting it. Task status, REPORT.md, logs — all readable from outside. The brain reads these to report status to the user.
+</div>
+
+<div class="key">
+<b>7. Recoverable.</b> If the agent crashes, nothing is lost. State is in files. Open a new terminal, point it at the same folder, it resumes. No "session state" that vanishes when the window closes.
+</div>
+
+<div class="key">
+<b>8. Composable.</b> Agents can chain. Agent A's REPORT.md becomes agent B's TASK.md. Because the interface is standard (files), agents don't need to know about each other. The brain composes them.
+</div>
+
+<div class="key">
+<b>9. Growable.</b> An agent starts with CLAUDE.md + one task. It gains structure only when needed — specs, tools, plan-verify, sub-agents. It's never over-designed at birth. It grows from use.
+</div>
+
+<h2>28. Which characteristics are free</h2>
+
+<p>Some characteristics come automatically from the folder-based design. Others require explicit work.</p>
+
+<table>
+<tr><th>Characteristic</th><th>Free?</th><th>What gives it</th></tr>
+<tr><td>Self-aware</td><td>Free</td><td>CLAUDE.md exists → agent knows itself</td></tr>
+<tr><td>Scoped</td><td>Free</td><td>CLAUDE.md defines boundaries</td></tr>
+<tr><td>Isolated</td><td>Free</td><td>Separate folder → separate space</td></tr>
+<tr><td>Communicable</td><td>Almost free</td><td>Convention: TASK.md in, REPORT.md out</td></tr>
+<tr><td>Stateful</td><td>Almost free</td><td>All work in files → survives sessions</td></tr>
+<tr><td>Recoverable</td><td>Almost free</td><td>State on disk → restart = re-read</td></tr>
+<tr><td>Observable</td><td>Needs convention</td><td>Standard REPORT.md format + task status</td></tr>
+<tr><td>Composable</td><td>Needs the brain</td><td>Brain chains outputs → inputs</td></tr>
+<tr><td>Growable</td><td>Needs discipline</td><td>Don't over-design. Add structure when pain is real.</td></tr>
+</table>
+
+<p>Six out of nine are free or almost free. The filesystem gives them to us. The remaining three need a brain (composability), a convention (observability), and discipline (growability).</p>
+
+<h2>29. The minimum viable agent</h2>
+
+<p>Given the nine characteristics, what's the absolute minimum?</p>
+
+<div class="fig">my-agent/
+  CLAUDE.md                    &larr; self-aware + scoped
+  tasks/
+    {task-name}/
+      TASK.md                  &larr; communicable (input)
+      REPORT.md                &larr; communicable (output) + observable
+      ...work files...         &larr; stateful + recoverable</div>
+
+<p>That's it. Four files in two folders. This agent is:</p>
+
+<div class="evidence">
+&check; Self-aware (CLAUDE.md)<br>
+&check; Scoped (CLAUDE.md says boundaries)<br>
+&check; Communicable (TASK.md / REPORT.md)<br>
+&check; Isolated (own folder)<br>
+&check; Stateful (work files persist)<br>
+&check; Observable (REPORT.md shows progress)<br>
+&check; Recoverable (all state on disk)<br>
+&check; Growable (can add specs/, tools/, plan-verify/ later)<br>
+? Composable (needs brain to chain with other agents)
+</div>
+
+<p>Eight out of nine from birth. Composability comes when the brain connects agents. The agent itself doesn't need to know about composition — that's the brain's job.</p>
+
+<h2>30. The agent growth path</h2>
+
+<div class="fig"><b>Birth:</b> CLAUDE.md + tasks/{first-task}/TASK.md
+  8/9 characteristics. Can do real work.
+
+<b>After 5 tasks:</b> + specs/METHOD.md
+  Agent noticed it repeats the same approach. Writes it down.
+  Now new tasks start faster.
+
+<b>After 10 tasks:</b> + tools/
+  Agent wrote helper scripts. Reuses them across tasks.
+  Now it's more efficient.
+
+<b>After hitting a wall:</b> + plan-verify/ + working/
+  Tasks got complex. Agent needs to plan before executing.
+  Splits into planner + worker.
+
+<b>After domain expansion:</b> + agents.md + sub-agents/
+  The domain grew. Agent spawns specialists for sub-domains.
+  Becomes a mini-brain.
+
+Each step is triggered by PAIN, not by design.
+"I keep repeating myself" &rarr; specs/
+"I keep writing the same code" &rarr; tools/
+"I keep failing without planning" &rarr; plan-verify/
+"I can't handle all these sub-topics" &rarr; agents.md</div>
+
+<h2>31. Clean check: the brain's hygiene loop</h2>
+
+<p>Context gets dirty over time. Files drift into the wrong agent. Topics mix. The brain needs to catch this automatically.</p>
+
+<div class="fig">Brain clean check (runs when idle):
+
+  1. Read agents.md → list all agents
+  2. For each agent:
+     a. Read CLAUDE.md → understand scope
+     b. Scan folder contents
+     c. For each file/subfolder: does this belong to this scope?
+  3. If mismatch found:
+     a. Identify which agent the file SHOULD belong to
+     b. Report: "{file} in {agent} → should be in {correct-agent}"
+     c. Auto-fix or ask user
+  4. Check for agent-less content:
+     a. Files in agents/ root that aren't an agent folder
+     b. Suggest: create new agent or move to existing one</div>
+
+<p>The brain is the ONLY one who can do this. Individual agents can't judge their own files (bias). The brain sees all agents, knows all scopes, and can route correctly.</p>
+
+<div class="key">
+<b>This is the immune system.</b> The clean check prevents context contamination the same way an immune system prevents infection. It runs continuously, detects foreign bodies (misplaced files), and removes them.
+<br><br>
+Without it, entropy wins. Files accumulate. Contexts get noisy. Agents get confused. The clean check is what keeps the system healthy over time.
+</div>
+
+<div class="fig">Example clean check output:
+
+  ✓ brain/          3 files, all routing-related
+  ✓ auto-build/     clean — loop docs + 2 task folders
+  ✗ math-modeling/  ISSUE: math-rendering/ has 80+ HTML files
+                    covering 15+ different topics.
+                    Suggest: move topic-specific files to
+                    their own agents or archive.
+  ✓ algorithm-optimization/  clean — plan-verify + working
+  ✓ resume-writer/  clean
+  ✗ text-to-sql/    ISSUE: archive/ contains old versions.
+                    Suggest: move to text-to-sql.portal_bak
+                    or delete if backed up.</div>
+
+<p>The clean check doesn't need to be perfect. It just needs to catch the obvious contamination — files that clearly belong to a different scope. Over time, it keeps the system clean enough for focused work.</p>
+
+<h2>31. The brain's loop</h2>
+
+<p>The brain is not a batch processor. It is a loop. It listens, routes, watches, cleans, and listens again. This is the operational cycle &mdash; not a design principle, but the actual sequence of actions.</p>
+
+<div class="fig">1. LISTEN    &mdash; what did the user say? not the words. the need.
+2. PARSE     &mdash; is the intent clear enough to match?
+3. CLARIFY   &mdash; not clear? ask the user. converge on intent.
+4. MATCH     &mdash; clear &rarr; which agent handles this?
+   &rarr; found     &rarr; LAUNCH
+   &rarr; not found &rarr; CREATE &rarr; LAUNCH
+5. LAUNCH    &mdash; open the agent's window. user interacts directly.
+6. WAIT      &mdash; user is with the agent. brain idles.
+7. RETURN    &mdash; user comes back. read REPORT.md. update tasks.md.
+8. CLEAN     &mdash; scan all folders. move misplaced files. fix scope.
+9. LISTEN AGAIN</div>
+
+<p>Step 3 is critical: <b>the brain is not a one-shot resolver.</b> When the user says "I need to do something with data," the brain doesn't guess. It asks: "What kind of data work? Analysis, pipeline, training?" One or two questions is usually enough. The brain converges on the intent through conversation, then matches.</p>
+
+<p>The brain never dead-ends. Unclear &rarr; clarify. Clear but no match &rarr; create. Clear and match &rarr; launch. Every path leads to an open window.</p>
+
+<p>The loop has a deep property: <b>it directs attention, never does the work.</b> If the brain catches itself writing code, analyzing data, or drafting text &mdash; it has broken the loop. That work belongs to an agent. The brain's only output is: an open window pointed at the right agent.</p>
+
+<h2>32. Context switching</h2>
+
+<p>The hardest thing the brain does is switch. Not because it's complex &mdash; but because it must be lossless.</p>
+
+<div class="fig"><b>SWITCH protocol:</b>
+
+User: "Switch to rogii"
+
+Brain:
+  1. SAVE current context
+     &bull; Current agent writes state to its task folder
+     &bull; Any uncommitted observations &rarr; notes in REPORT.md
+     &bull; Current task status updated in tasks.md
+
+  2. LOAD target context
+     &bull; Find: tasks.md &rarr; rogii &rarr; agent: auto-build
+     &bull; Read: auto-build/CLAUDE.md (become this agent's brain)
+     &bull; Read: auto-build/tasks/rogii/TASK.md (the contract)
+     &bull; Read: auto-build/tasks/rogii/REPORT.md (where we are)
+
+  3. RESUME
+     &bull; The files ARE the state. No "session" to restore.
+     &bull; The brain reads the files and knows exactly where the agent left off.</div>
+
+<p>This is why stateful = files, not memory. A context window dies when the terminal closes. A file doesn't. The switch works because there is nothing to transfer &mdash; everything is already on disk.</p>
+
+<div class="key">
+<b>Context switching cost in this system: zero.</b><br>
+In a traditional system, switching context means serializing state, transferring it, deserializing it. Here, the state was never in memory. It was always on disk. "Switching" just means: read a different folder.
+</div>
+
+<h2>33. Error modes</h2>
+
+<p>Three things go wrong. Only three.</p>
+
+<div class="wrong">
+<b>1. Misroute</b><br>
+The brain sends a task to the wrong agent. The agent either fails (doesn't know how) or produces the wrong output (knows how, but shouldn't).<br><br>
+<b>Detection:</b> REPORT.md doesn't match TASK.md expectations. Or the agent says "this isn't my scope."<br>
+<b>Recovery:</b> Move TASK.md to the correct agent. Update tasks.md. The work already done may or may not transfer &mdash; that's fine.
+</div>
+
+<div class="wrong">
+<b>2. Scope creep</b><br>
+An agent starts handling things outside its CLAUDE.md. Files appear in the folder that don't match the scope. The clean check catches this, but between checks, contamination can spread.<br><br>
+<b>Detection:</b> Clean check finds mismatched files. Or the brain notices the agent talking about topics outside its scope.<br>
+<b>Recovery:</b> Move files. Tighten CLAUDE.md. If the agent's domain legitimately grew, update the scope &mdash; don't fight organic growth, but name it.
+</div>
+
+<div class="wrong">
+<b>3. Stale task</b><br>
+A task sits in "active" status but no one is working on it. The agent crashed, the user forgot, or the task is blocked on something external.<br><br>
+<b>Detection:</b> tasks.md shows "active" but REPORT.md hasn't changed. Or the user asks "what's going on?" and the brain has nothing to report.<br>
+<b>Recovery:</b> Ping the agent. If no response, check the task folder for clues. If blocked, mark as "blocked" with reason. If abandoned, mark as "paused."
+</div>
+
+<p>Notice: all three errors are detectable from files. No logs, no monitoring, no health checks. Read the folder. If it looks wrong, it is wrong.</p>
+
+<h2>34. The naming system</h2>
+
+<p>Names in this system are not labels. They are addresses.</p>
+
+<div class="fig">Unix:    /usr/bin/grep              &larr; path IS the address
+DNS:     api.example.com            &larr; name IS the address
+Plan 9:  /net/tcp/80/data           &larr; path IS the protocol
+
+Ours:    agents/auto-build/tasks/rogii/TASK.md
+
+         agents/                    &larr; namespace root
+         auto-build/                &larr; which process (agent)
+         tasks/                     &larr; what kind of thing (structure)
+         rogii/                     &larr; which instance (task)
+         TASK.md                    &larr; what to read (contract)</div>
+
+<p>Every level of the path answers a question. There is no ambiguity. There is no lookup table. The path IS the resolution.</p>
+
+<p>This has a consequence most systems miss: <b>naming errors are routing errors.</b> If the folder is named wrong, the brain will misroute tasks to it. If TASK.md is missing, the agent won't know what to do. The filesystem is the API &mdash; and the filename is the endpoint. Naming isn't cosmetic. It's structural.</p>
+
+<div class="key">
+<b>Naming rules:</b><br>
+&bull; Agent names: kebab-case, describes the domain. <code>auto-build</code>, not <code>builder</code>. <code>resume-writer</code>, not <code>resumes</code>.<br>
+&bull; Task names: kebab-case, describes the specific instance. <code>rogii</code>, not <code>task-1</code>. <code>resume-google</code>, not <code>resume</code>.<br>
+&bull; File names: UPPER.md for contracts (TASK.md, REPORT.md, CLAUDE.md). lower.md for everything else.<br><br>
+If you can't name it in two words, you don't understand the scope yet.
+</div>
+
+<h2>35. Plan 9 and the filesystem-as-OS</h2>
+
+<p>In 1992, Rob Pike and Ken Thompson built Plan 9 at Bell Labs. Their insight: Unix said "everything is a file" but didn't mean it. Devices were files, but networks weren't. Processes had /proc, but couldn't be composed through the filesystem. Plan 9 made it literal.</p>
+
+<div class="fig">Plan 9:
+  /net/tcp/clone     &rarr; open this file to create a TCP connection
+  /proc/42/status    &rarr; read this file to see process state
+  /mnt/remote/       &rarr; another machine's filesystem, mounted locally
+
+Ours:
+  agents/auto-build/CLAUDE.md      &rarr; read this file to become the agent
+  agents/auto-build/tasks/rogii/   &rarr; open this folder to work on the task
+  tasks.md                         &rarr; read this file to see all task states</div>
+
+<p>The parallel is not metaphorical. It is structural. Both systems use the filesystem as the sole coordination mechanism. No message queues. No service registries. No configuration files that point to other configuration files. The path IS the address. The file IS the state. The folder IS the isolation boundary.</p>
+
+<p>Plan 9 failed commercially because it was too radical for its time. But the idea was right: if you make the filesystem expressive enough, you don't need anything else. Our system proves it for a different domain: agent coordination.</p>
+
+<h2>36. Why not a database? Why not an API?</h2>
+
+<p>The obvious engineering question: why not use a proper coordination layer?</p>
+
+<table>
+<tr><th>Approach</th><th>What it gives</th><th>What it costs</th></tr>
+<tr><td>Database</td><td>Queries, indices, ACID</td><td>Schema, migrations, connection pooling, ORM, deployment</td></tr>
+<tr><td>Message queue</td><td>Async, ordering, replay</td><td>Broker, serialization, dead letter queues, monitoring</td></tr>
+<tr><td>REST API</td><td>Standard interface, tooling</td><td>Server, auth, versioning, documentation, uptime</td></tr>
+<tr><td>Filesystem</td><td>Naming, isolation, persistence</td><td>Nothing. It already exists.</td></tr>
+</table>
+
+<p>The cost column is the answer. Every coordination layer adds infrastructure that must be built, maintained, and debugged. The filesystem is free. It's already there. It already does naming, persistence, isolation, and hierarchy.</p>
+
+<p>The tradeoff: we lose queries (can't ask "show me all active tasks across all agents" without scanning folders) and we lose atomicity (two agents could write to the same file). In practice, neither matters:</p>
+
+<div class="evidence">
+&bull; We don't need complex queries &mdash; tasks.md IS the query result, maintained by the brain.<br>
+&bull; We don't have concurrent writes &mdash; one agent per folder, one brain routing. No conflicts by design.
+</div>
+
+<p>The filesystem is not a compromise. It is the correct abstraction for this problem. Agent coordination is a naming + isolation + persistence problem. The filesystem solves all three natively.</p>
+
+<h2>37. The two clocks</h2>
+
+<p>The system runs on two clocks. Understanding them prevents most operational confusion.</p>
+
+<div class="fig"><b>Clock 1: User time</b>
+  The user arrives with a task. Minutes to hours later, they want results.
+  The user thinks in: tasks, status, deliverables.
+  Interface: tasks.md.
+
+<b>Clock 2: Agent time</b>
+  The agent works in iterations. Each iteration: read TASK.md, do work, update REPORT.md.
+  An iteration takes seconds to minutes.
+  The agent thinks in: steps, experiments, outputs.
+  Interface: REPORT.md.</div>
+
+<p>The brain bridges the two clocks. When the user asks "what's going on?", the brain translates agent-time progress into user-time status. "Iteration 12, RMSE 4.1" is agent-speak. "Getting closer, accuracy improved 50% from start" is user-speak. The brain translates.</p>
+
+<p>The mismatch between the two clocks is where frustration lives. The user wants to know if it's done. The agent wants to know what to try next. The brain must satisfy both without confusing either.</p>
+
+<h2>38. What we proved</h2>
+
+<p>This design is not theoretical. It runs. Evidence from the current system:</p>
+
+<div class="evidence">
+<b>auto-build: banking77</b><br>
+Started from empty. 0% &rarr; 82% held-out accuracy. The loop ran autonomously. TASK.md defined the goal. REPORT.md tracked progress. The agent grew its own tools/ and specs/ as it learned. P0 &rarr; P0+P2 organically.<br><br>
+
+<b>math-modeling: entity-research</b><br>
+144 experiments. Paper draft v4. The agent accumulated knowledge in specs/DOMAINS.md. Ideas flowed through ideas/. State persisted across dozens of sessions via state.md. P0+P2, never needed P1.<br><br>
+
+<b>resume-writer</b><br>
+Three-library architecture (experience + preferences + intent). Feedback loops refined output across tasks. P0+P1 &mdash; needed plan-verify because resume writing requires iteration with user feedback.<br><br>
+
+<b>algorithm-optimization</b><br>
+Full P0+P1+P2. Plan-verify + working split. The most complex agent, handling SFT and GRPO pipelines. Grew to full structure because the domain demanded it.
+</div>
+
+<p>Four agents. Four different maturity levels. All following the same pattern: start minimal, grow from pain. None were designed upfront to be complex. Complexity emerged from use.</p>
+
+<h2>39. What remains</h2>
+
+<p>The theory is complete. The design is proven. What's left is the gap between "it works when I manually set it up" and "it works when the user just talks."</p>
+
+<div class="fig"><b>Done:</b>
+  &check; Agent structure (CLAUDE.md + tasks/)
+  &check; Nine characteristics defined
+  &check; Growth path (P0 &rarr; P1 &rarr; P2)
+  &check; Clean check protocol
+  &check; Brain loop defined
+
+<b>Remaining:</b>
+  &square; Auto-routing: brain parses natural language &rarr; matches agent
+  &square; Auto-create: brain creates agent from first task description
+  &square; Context switch: "continue X" loads the right folder seamlessly
+  &square; Status view: "what's going on?" reads all REPORT.md files
+  &square; Multi-agent dispatch: one user request &rarr; multiple agents</div>
+
+<p>Each item is small. Each is independently useful. The system gets better with each one. There is no "launch" &mdash; there is only "the next step."</p>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part III: Implementation</div>
+
+<h2>40. Building the brain</h2>
+
+<p>Theory is done. Now we build. The brain is not a program &mdash; it's a set of files that make an LLM behave as a router. "Building" means: writing the right files so that any LLM session that opens this folder becomes the brain.</p>
+
+<div class="fig"><b>The brain is four files:</b>
+
+brain/
+  CLAUDE.md       &larr; identity + protocol (WHO I am, HOW I route)
+  agents.md       &larr; routing table (WHERE to send tasks)
+  tasks.md        &larr; task registry (WHAT the user sees)
+  loop_prompt.md  &larr; operational loop (the cycle I run)</div>
+
+<p>That's it. No code. No framework. No deployment. Write four files. Open a terminal. Point Claude at the folder. The brain boots.</p>
+
+<h2>41. agents.md: the routing table</h2>
+
+<p>This is the brain's process table. Every active agent in the system, with enough information to route.</p>
+
+<div class="fig">| id | name | domain | status |
+|----|------|--------|--------|
+| 01 | math-modeling | LLM internals research | active |
+| 02 | auto-build | build systems from eval sets | active |
+| ...
+
+<b>Routing algorithm:</b>
+  1. User says X
+  2. Brain reads agents.md
+  3. For each row: does X match this domain?
+  4. Best match &rarr; route
+  5. No match &rarr; CREATE new agent</div>
+
+<p>The routing is semantic, not keyword-based. "I have a Kaggle competition" matches <code>auto-build</code> not because of keywords, but because the LLM understands that building a competition solution IS "building systems from eval sets." The domain description is a prompt, not a filter.</p>
+
+<div class="key">
+<b>Design decision:</b> agents.md is flat. No hierarchy. No categories. The brain scans linearly. With 15 agents, this is instant. With 100, it might need grouping. We'll cross that bridge when we feel the pain &mdash; not before.
+</div>
+
+<h2>42. tasks.md: the user interface</h2>
+
+<p>This is the ONLY file the user needs to understand. It shows what they asked for and where it stands.</p>
+
+<div class="fig">| task | status | agent | description |
+|------|--------|-------|-------------|
+| entity-research | paused | math-modeling | 144 experiments, paper draft v4 |
+| paper | active | math-modeling | "The Geometry of Knowing and Saying" |
+| banking77 | done | auto-build | 0% &rarr; 82% held-out from empty |
+| rogii | new | auto-build | Kaggle $50K geology prediction |
+
+<b>Status values:</b>
+  new     &mdash; created, not started
+  active  &mdash; agent is working on it
+  paused  &mdash; stopped, can resume
+  blocked &mdash; waiting on something external
+  done    &mdash; complete, deliverable ready</div>
+
+<p>The agent column is invisible to the user in spirit &mdash; they don't care which agent handles it. But it's visible in practice because the user IS the designer right now. Later, it could be hidden.</p>
+
+<h2>43. CLAUDE.md: the brain's identity</h2>
+
+<p>This file makes any LLM session become the brain. It must contain:</p>
+
+<div class="fig">1. IDENTITY    &mdash; "I am the brain. I route tasks to agents."
+2. PROTOCOL    &mdash; the loop: LISTEN &rarr; PARSE &rarr; MATCH &rarr; DISPATCH
+3. BOUNDARIES  &mdash; "I do NOT do the work. I route."
+4. FILES       &mdash; which files I read and write
+5. AUTO-CREATE &mdash; how to create a new agent
+6. CLEAN CHECK &mdash; how to audit agent contexts</div>
+
+<p>The CLAUDE.md is short. Under 50 lines. The LLM doesn't need a textbook &mdash; it needs a role definition. The loop_prompt.md adds depth for when the brain needs to reflect on its own process.</p>
+
+<h2>44. The dispatch protocol</h2>
+
+<p>How the brain actually sends work to an agent. This is the IPC mechanism.</p>
+
+<div class="fig"><b>LAUNCH(task_name, agent_name, user_request):</b>
+
+  1. Resolve path: agents/{agent_name}/
+  2. If new task:
+     a. Create: agents/{agent_name}/tasks/{task_name}/
+     b. Write TASK.md (what, context, deliverable)
+     c. Update tasks.md: add row
+  3. Open the agent's window:
+     a. New Claude session pointed at agents/{agent_name}/
+     b. The agent reads its own CLAUDE.md, becomes itself
+     c. The agent runs its own ENTRY CHECK on the task
+     d. The agent reads tasks/{task_name}/TASK.md, starts working
+  4. User talks directly to the agent.
+
+<b>The brain is no longer in the conversation.</b>
+The user and the agent work together.
+The brain waits at its home window.</div>
+
+<p>The brain launches at the <b>agent level</b>. It checks: does this agent exist? Does it have a CLAUDE.md? Is it registered? That's the brain's scope. The brain doesn't look inside the task folder &mdash; that's the agent's business.</p>
+
+<p>The <b>entry check</b> belongs to the agent, not the brain. When the agent starts, it checks its own task context before working:</p>
+
+<div class="fig"><b>Agent entry check (runs on startup):</b>
+
+  1. Read CLAUDE.md &mdash; who am I?
+  2. Scan task folder &mdash; is the context clean?
+     &bull; Stale files? Leftover from previous attempt?
+     &bull; TASK.md current? Or outdated from a different session?
+     &bull; REPORT.md from a finished task still sitting as "active"?
+     &bull; Files that don't belong to this task?
+  3. If dirty &rarr; clean first, then work.
+  4. If clean &rarr; read TASK.md, start working.</div>
+
+<p>This is the right separation. The brain checks agents (system level). The agent checks tasks (task level). Each level is responsible for its own cleanliness. The brain doesn't micromanage task folders. The agent doesn't worry about other agents.</p>
+
+<div class="key">
+<b>Brain scope:</b> which agent? does it exist? launch it.<br>
+<b>Agent scope:</b> which task? is it clean? work on it.<br><br>
+The L14 bottleneck is at the AGENT level, not the brain level. The agent filters its own noise before computation begins. The brain just activates the right agent &mdash; what happens inside is the agent's responsibility.
+</div>
+
+<p>When the user is done, they return to the brain window. The brain reads REPORT.md to see what happened. The cycle continues.</p>
+
+<h2>45. The status protocol</h2>
+
+<p>When the user asks "what's going on?", the brain does a sweep.</p>
+
+<div class="fig"><b>STATUS():</b>
+
+  1. Read tasks.md &rarr; list of (task, status, agent)
+  2. For each active task:
+     a. Read agents/{agent}/tasks/{task}/REPORT.md
+     b. Extract last update (first line or last section)
+  3. Present to user:
+
+     task-name    status    last update
+     ─────────    ──────    ───────────
+     rogii        active    iter 12, RMSE 4.1
+     paper        active    draft v5, methods section done
+     banking77    done      82% held-out accuracy
+
+<b>If no REPORT.md exists:</b> status is "dispatched, no report yet."
+<b>If REPORT.md says DONE:</b> update tasks.md status to done.</div>
+
+<p>The status sweep is the brain's read-only operation. It never modifies agent files during status. It only updates tasks.md if it discovers a task is done.</p>
+
+<h2>46. The create protocol</h2>
+
+<p>When the brain can't match a task to any agent, it creates one. This is fork().</p>
+
+<div class="fig"><b>CREATE(domain_name, first_task, user_request):</b>
+
+  1. Pick name: kebab-case, 2-3 words, describes the domain
+     "I need to analyze churn data" &rarr; data-analysis
+     "Write a comic about my cat"   &rarr; comic-agent
+     "Help me study for GRE"        &rarr; test-prep
+
+  2. Create folder structure:
+     mkdir agents/{name}
+     mkdir agents/{name}/tasks
+     mkdir agents/{name}/tasks/{first_task}
+
+  3. Write CLAUDE.md (one paragraph):
+     "# {name}
+      I {verb} {domain}. I read TASK.md for each task.
+      I write results to REPORT.md."
+
+  4. Register in agents.md:
+     | {next_id} | {name} | {domain description} | active |
+
+  5. Write TASK.md for the first task (normal DISPATCH)
+
+  6. Report: "Created {name} agent. First task: {first_task}."
+
+<b>Total cost:</b> 3 folders, 3 files. Under 10 lines of content.
+<b>Total time:</b> instant. The agent exists.</div>
+
+<p>The key insight: creating an agent is cheap. Cheaper than deliberating about whether to create one. If in doubt, create. If it turns out to be wrong, the clean check will merge or remove it later. Agents are cattle, not pets.</p>
+
+<h2>47. Multi-agent dispatch</h2>
+
+<p>Sometimes one user request needs multiple agents.</p>
+
+<div class="fig">User: "I need a resume for Google and also check how the Kaggle
+       competition is going."
+
+Brain parses TWO intents:
+  1. "resume for Google"     &rarr; resume-writer
+  2. "check Kaggle status"   &rarr; auto-build (status check)
+
+Actions:
+  1. DISPATCH("resume-google", "resume-writer", ...)
+  2. STATUS() for rogii task
+  3. Report both results to user</div>
+
+<p>The brain decomposes before routing. One sentence can contain multiple tasks. The parse step must catch this. If it doesn't, the user will say "you forgot about the Kaggle thing" &mdash; and the brain will learn.</p>
+
+<h2>48. The bootstrap: first clean check</h2>
+
+<p>The system currently has 14 active agents but only 6 are registered. The first operational act of the brain is to fix this. This is the bootstrap &mdash; the brain's first clean check on the real system.</p>
+
+<div class="fig"><b>Current state (before bootstrap):</b>
+
+Registered (6):
+  math-modeling, auto-build, algorithm-optimization,
+  resume-writer, text-to-sql, brand-matching
+
+Unregistered but active (8):
+  plan-verify, knowledge-base, paper-writing,
+  query-eval, online-testing, comic-agent,
+  metacognition, novel-writer
+
+Missing CLAUDE.md (5):
+  query-eval, online-testing, comic-agent,
+  metacognition, novel-writer
+
+ADK samples (~50): not our agents. ignore.
+
+<b>Bootstrap actions:</b>
+  1. Register all 14 active agents in agents.md
+  2. Write CLAUDE.md for the 5 that lack one
+  3. Update tasks.md to reflect all active tasks
+  4. Verify: every registered agent has CLAUDE.md + tasks/</div>
+
+<p>After bootstrap, the brain can route to any agent in the system. Before bootstrap, 57% of agents are invisible. The brain can't route what it can't see.</p>
+
+<h2>49. What the brain IS and is NOT</h2>
+
+<p>The brain is not a router. A router just forwards packets. The brain understands intent, decides where attention goes, launches agent sessions, manages switching, and maintains the system. That's a brain.</p>
+
+<div class="key">
+<b>The brain is a brain.</b><br>
+A human brain doesn't proxy between your eyes and your hands. It doesn't relay messages. It <b>directs attention</b>. It decides what to focus on. It launches motor programs. It switches between tasks. It never does the specialized work &mdash; but without it, nothing coordinates.<br><br>
+The name was right all along. The description was wrong.
+</div>
+
+<div class="wrong">
+<b>The brain is NOT a proxy.</b><br>
+It doesn't sit between the user and the agent, relaying messages. That wastes context, loses information, and makes the brain a bottleneck. The brain opens the window. The user talks directly to the agent.
+</div>
+
+<div class="wrong">
+<b>The brain is NOT a router.</b><br>
+A router forwards packets without understanding them. The brain understands the user's intent, matches it to a domain, and creates agents that don't exist yet. Routers don't create endpoints.
+</div>
+
+<div class="wrong">
+<b>The brain is NOT an orchestrator.</b><br>
+An orchestrator controls execution: start, stop, monitor, retry. The brain launches and lets go. The agent runs its own execution with the user directly.
+</div>
+
+<div class="wrong">
+<b>The brain is NOT a planner.</b><br>
+A planner decomposes goals into sub-steps. That's plan-verify's job. The brain decides WHERE attention goes, not HOW the work gets done.
+</div>
+
+<div class="fig"><b>What the brain does:</b>
+  &bull; Understands &mdash; parses user intent into tasks
+  &bull; Decides     &mdash; matches tasks to agents
+  &bull; Launches    &mdash; opens agent windows for direct interaction
+  &bull; Creates     &mdash; spawns new agents when no match exists
+  &bull; Switches    &mdash; saves context, opens different agent window
+  &bull; Maintains   &mdash; clean check, system hygiene, routing table
+
+<b>What the brain doesn't do:</b>
+  &bull; Work        &mdash; never writes code, analyzes data, drafts text
+  &bull; Proxy       &mdash; never relays between user and agent
+  &bull; Plan        &mdash; never decomposes tasks into sub-steps
+  &bull; Judge       &mdash; never evaluates agent output quality</div>
+
+<h2>50. The system, built</h2>
+
+<p>After bootstrap, four files define the entire system:</p>
+
+<div class="evidence">
+<b>brain/CLAUDE.md</b> &mdash; 40 lines. Identity + protocol. Any LLM reads this and becomes the brain.<br><br>
+<b>brain/agents.md</b> &mdash; 14 rows. The routing table. Every active agent, one line each.<br><br>
+<b>brain/tasks.md</b> &mdash; N rows. The user's task list. Flat, simple, always current.<br><br>
+<b>brain/loop_prompt.md</b> &mdash; The operational loop. LISTEN &rarr; PARSE &rarr; MATCH &rarr; CREATE &rarr; DISPATCH &rarr; WATCH &rarr; CLEAN &rarr; LISTEN AGAIN.
+</div>
+
+<p>Plus the invariant at every agent:</p>
+
+<div class="evidence">
+<b>{agent}/CLAUDE.md</b> &mdash; one paragraph. Identity + scope.<br>
+<b>{agent}/tasks/{task}/TASK.md</b> &mdash; the contract. What to do.<br>
+<b>{agent}/tasks/{task}/REPORT.md</b> &mdash; the output. What was done.
+</div>
+
+<p>That's the whole system. No framework. No infrastructure. No deployment. Just files that make LLMs behave as a coordinated system.</p>
+
+<div class="fig"><b>The build is the design.</b>
+
+In most systems, the design doc describes what to build.
+Here, the design doc IS what was built.
+The files ARE the system.
+Writing them was building them.
+
+There is no gap between design and implementation
+because the implementation is: files that an LLM reads.</div>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part IV: The Leaf Agent</div>
+
+<h2>51. The leaf agent's goal: act well</h2>
+
+<p>The brain routes. The leaf acts. That's the entire system in two words.</p>
+
+<p>But "act" is easy. Any LLM can act &mdash; generate code, draft text, run experiments. The problem is acting <b>well</b>. An LLM that acts without feedback will:</p>
+
+<div class="fig">&bull; Write code that looks correct but fails on edge cases
+&bull; Draft a resume that sounds impressive but misses the JD keywords
+&bull; Train a model for 50 iterations past the point of diminishing returns
+&bull; Solve the wrong problem confidently</div>
+
+<p>The leaf agent can act. But it cannot <b>see its own action from outside</b>. It's inside the execution. It sees what it intended, not what it produced. Like a writer who rereads their draft and sees the essay they meant to write, not the one they actually wrote.</p>
+
+<p>This is not a bug. It's a structural property of generation. The same process that produces output cannot simultaneously evaluate that output, because evaluation requires a <b>different viewpoint</b> &mdash; a context that doesn't carry the momentum of generation.</p>
+
+<h2>52. The optimization decomposition</h2>
+
+<p>Every optimization system has two components:</p>
+
+<div class="fig"><b>Generator</b>  &mdash; produces candidates
+<b>Evaluator</b>  &mdash; scores candidates
+<b>Loop</b>       &mdash; generator produces &rarr; evaluator scores &rarr; generator adjusts
+
+Gradient descent:   forward pass (generate) + loss function (evaluate)
+Evolution:          mutation (generate) + fitness function (evaluate)
+Science:            hypothesis (generate) + experiment (evaluate)
+Writing:            draft (generate) + editing (evaluate)</div>
+
+<p>You cannot optimize with only a generator. You cannot optimize with only an evaluator. And critically: <b>they must be separate.</b> A generator that evaluates itself is just a generator with extra tokens. The evaluation must come from a different context, a different session, a different viewpoint.</p>
+
+<p>Plan-verify + working IS this decomposition:</p>
+
+<div class="key">
+<b>Working = generator.</b> Its job is to act. Produce output. Write code. Draft text. Run the experiment. Don't judge. Don't second-guess. Act.<br><br>
+<b>Plan-verify = evaluator.</b> Its job is to see. Read the output. Compare to the goal. Is this good enough? If not, what's wrong? Send feedback. Don't do the work. Judge the work.<br><br>
+<b>The loop = optimization.</b> Working acts &rarr; plan-verify evaluates &rarr; working acts again with feedback &rarr; repeat until plan-verify says done.
+</div>
+
+<p>This is why the split works: it maps to the fundamental structure of optimization. Not because "management is good" or "verification catches bugs" &mdash; but because <b>you cannot converge without a loss function, and the loss function must be external to the generator.</b></p>
+
+<h2>53. Why two sessions, not one</h2>
+
+<p>Why can't a single LLM session both act and evaluate?</p>
+
+<p>It can try. Every LLM does this internally &mdash; "let me check my work." But there's a structural problem: <b>context momentum.</b></p>
+
+<div class="fig">Session that just WROTE the code:
+  &bull; Remembers why each decision was made
+  &bull; Sees the intent behind each line
+  &bull; Carries the reasoning that led to this solution
+  &bull; Evaluates: "yes, this is correct"  (it would &mdash; it just wrote it)
+
+Fresh session that READS the code:
+  &bull; Sees only the output, not the intent
+  &bull; Reads what's written, not what was meant
+  &bull; Has no attachment to the approach
+  &bull; Evaluates: "line 42 has a bug, and the whole approach
+    misses the constraint in TASK.md paragraph 3"</div>
+
+<p>The first session can't see its own blind spots because the blind spots are part of its context. The second session has no blind spots about this code &mdash; it has a fresh context. This is why code review works. This is why editors exist. This is why science requires independent replication.</p>
+
+<p>Plan-verify is a fresh session. It reads TASK.md (what was asked) and REPORT.md (what was done). It has no memory of the struggle, the tradeoffs, the "I tried X but it didn't work so I did Y." It sees the output cold. That's exactly what evaluation requires.</p>
+
+<h2>54. The leaf agent's structure</h2>
+
+<p>A leaf agent that needs to act well has exactly this structure:</p>
+
+<div class="fig">{agent}/
+  CLAUDE.md                  &larr; identity: what domain I handle
+  plan-verify/
+    CLAUDE.md                &larr; "I plan tasks and verify results"
+  working/
+    CLAUDE.md                &larr; "I execute. I act. I produce artifacts."
+  tasks/
+    {task-name}/
+      TASK.md                &larr; contract (from brain or plan-verify)
+      REPORT.md              &larr; output (from working, read by plan-verify)
+
+<b>The flow:</b>
+  1. Brain dispatches TASK.md to the agent
+  2. Plan-verify reads TASK.md, writes a specific action plan
+  3. Working reads the plan, ACTS, writes REPORT.md
+  4. Plan-verify reads REPORT.md, compares to TASK.md
+     &bull; Good enough &rarr; done
+     &bull; Not good enough &rarr; writes feedback, working acts again
+  5. When plan-verify says done, brain reads the final REPORT.md</div>
+
+<p>Working never decides "am I done?" Plan-verify never does the work. The separation is absolute.</p>
+
+<h2>55. When to split, when not to</h2>
+
+<p>Not every leaf agent needs plan-verify + working. The split is needed when the <b>action is complex enough that self-evaluation fails.</b></p>
+
+<div class="fig"><b>Don't split (P0 is enough):</b>
+  &bull; The action is simple and verifiable by inspection
+  &bull; "Convert this CSV to JSON" &mdash; either it works or it doesn't
+  &bull; "Summarize this document" &mdash; one-shot, no iteration needed
+  &bull; The cost of a bad output is low
+
+<b>Split (P0 + P1 needed):</b>
+  &bull; The action requires iteration to converge
+  &bull; "Build a model that gets 80% accuracy" &mdash; needs feedback loop
+  &bull; "Write a resume that matches this JD" &mdash; needs draft &rarr; review cycles
+  &bull; "Optimize this SQL query" &mdash; needs measurement &rarr; adjustment
+  &bull; The cost of a bad output is high</div>
+
+<p>The heuristic: if a human would want to review the output before shipping it, the agent needs plan-verify. If a human would trust the output sight-unseen, P0 is enough.</p>
+
+<h2>56. The three roles</h2>
+
+<p>The system has exactly three roles. Every agent in the system is one of these.</p>
+
+<p>Two types of agents, three roles inside them:</p>
+
+<table>
+<tr><th>Agent type</th><th>What it does</th><th>Has agents.md?</th><th>Examples</th></tr>
+<tr><td><b>Brain-type</b></td><td>Directs attention, routes, launches</td><td>Yes</td><td>brain/, math-modeling/</td></tr>
+<tr><td><b>Leaf</b></td><td>Acts (with plan-verify + working if complex)</td><td>No</td><td>auto-build/, resume-writer/</td></tr>
+</table>
+
+<p>Inside a leaf agent, up to three roles:</p>
+
+<table>
+<tr><th>Role</th><th>Goal</th><th>Input</th><th>Output</th></tr>
+<tr><td><b>Plan-verify</b></td><td>Entry check + plan + verify</td><td>TASK.md + REPORT.md</td><td>Plan / pass / feedback</td></tr>
+<tr><td><b>Working</b></td><td>Act</td><td>Plan from plan-verify</td><td>Artifacts + REPORT.md</td></tr>
+<tr><td><b>(P0 only)</b></td><td>Act + self-check</td><td>TASK.md</td><td>Artifacts + REPORT.md</td></tr>
+</table>
+
+<div class="key">
+<b>Brain-type</b> directs &rarr; has agents.md, routes to sub-agents, launches windows. Never does the work.<br>
+<b>Leaf + plan-verify</b> &rarr; plan-verify does entry check, plans, verifies. Working acts. Optimization loop.<br>
+<b>Leaf P0 only</b> &rarr; one agent does everything: entry check, act, report. Simple tasks only.<br><br>
+A leaf that grows too complex becomes a brain-type. It gains agents.md and starts routing instead of acting. math-modeling did this.
+</div>
+
+<h2>57. Why this is not hierarchy</h2>
+
+<p>It looks like a hierarchy: brain &rarr; plan-verify &rarr; working. Three levels. Top-down control. But it's not.</p>
+
+<p>A hierarchy means: the top decides, the bottom obeys. The top is smarter. The bottom is dumber. Information flows up, commands flow down.</p>
+
+<p>This system is different: <b>each level does something the others structurally cannot.</b></p>
+
+<div class="fig">Brain can't act
+  &mdash; it sees all agents but no task details.
+  &mdash; it has breadth but no depth.
+
+Plan-verify can't act
+  &mdash; it sees the goal and the output but wasn't inside the execution.
+  &mdash; it has judgment but no generation momentum.
+
+Working can't judge
+  &mdash; it was inside the execution. it sees intent, not output.
+  &mdash; it has generation momentum but no distance.
+
+Working can't route
+  &mdash; it sees only its own folder. it doesn't know other agents exist.</div>
+
+<p>It's not hierarchy. It's <b>separation of concerns along cognitive boundaries.</b> Each role operates in a context that makes it good at exactly one thing and structurally incapable of the others. That's not management &mdash; it's architecture.</p>
+
+<div class="fig">Operating system parallel:
+
+  Scheduler (brain)    &mdash; decides WHICH process runs
+  Debugger (plan-verify) &mdash; inspects process output
+  Process (working)    &mdash; runs the computation
+
+The scheduler can't debug. The debugger can't compute.
+The process can't schedule. Not because of permissions &mdash;
+because each operates on different information.</div>
+
+<hr>
+
+<p style="text-align:center; color:#666; font-size:0.9em;">
+The leaf agent's goal is to act well.<br>
+Acting is easy. Acting well requires a feedback loop.<br>
+The feedback loop requires separation: generator + evaluator.<br>
+Working generates. Plan-verify evaluates. The loop converges.<br>
+This is not management. This is optimization.
+</p>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part V: The Brain Is a Brain</div>
+
+<h2>58. The wrong metaphor</h2>
+
+<p>We called it a router. A switchboard. A receptionist. All wrong.</p>
+
+<p>A router forwards packets without understanding them. A switchboard connects cables without knowing who's talking. A receptionist sends you to a room and forgets you exist.</p>
+
+<p>The brain does something none of these do: it <b>understands intent</b>, <b>creates new agents that didn't exist</b>, and <b>maintains the health of the entire system.</b> Routers don't create endpoints. Switchboards don't redesign the wiring. Receptionists don't scan every room for contamination.</p>
+
+<h2>59. The right metaphor</h2>
+
+<p>A human brain.</p>
+
+<div class="fig">Human brain:
+  &bull; Receives sensory input        &rarr; LISTEN
+  &bull; Interprets meaning            &rarr; PARSE
+  &bull; Asks for more info if unclear &rarr; CLARIFY
+  &bull; Selects motor program         &rarr; MATCH
+  &bull; Creates new neural pathways   &rarr; CREATE
+  &bull; Launches the motor program    &rarr; LAUNCH
+  &bull; Attention goes to the limb    &rarr; user talks to agent
+  &bull; Monitors via feedback         &rarr; WATCH (reads REPORT.md)
+  &bull; Housekeeping while idle       &rarr; CLEAN (like sleep consolidation)</div>
+
+<p>The brain doesn't move your hand. It doesn't proxy between your eyes and your fingers. It directs attention to the right motor program, and the motor program executes with direct sensory feedback. Your hand feels the object. Your hand adjusts grip. The brain doesn't micromanage &mdash; it launched the right program and let go.</p>
+
+<p>When you want to switch from typing to reaching for a cup, you don't "save typing state and load cup-reaching state." Your brain shifts attention. The motor programs are already there, already capable. The brain just points.</p>
+
+<div class="key">
+<b>The brain is the attention system.</b><br>
+It decides WHAT to focus on. The agents are the motor programs &mdash; they know HOW to do their thing. The user is the sensory input &mdash; they provide intent. The brain connects intent to capability.<br><br>
+This is why the user talks directly to agents. You don't think "brain, tell my hand to grip harder." You think "grip harder" and the motor program does it, with direct feedback from your fingers. The brain enabled the connection. It doesn't stay in the loop.
+</div>
+
+<h2>60. The natural interaction</h2>
+
+<p>With the brain-as-brain model, the interaction pattern becomes natural:</p>
+
+<div class="fig"><b>User arrives at brain window. Clear intent.</b>
+
+User: "I need to work on the resume."
+Brain:
+  &bull; Clear intent &rarr; resume-writer
+  &bull; Opens resume-writer window
+  &bull; User is now talking to resume-writer
+
+<b>User arrives at brain window. Unclear intent.</b>
+
+User: "I need to do something with data."
+Brain: "What kind of data work? Analysis, pipeline, training?"
+User: "I want to forecast sales."
+Brain:
+  &bull; Clear now &rarr; no agent for forecasting &rarr; CREATE
+  &bull; brain.sh create forecasting leaf
+  &bull; Opens forecasting window
+  &bull; User is now talking to forecasting
+
+<b>User is in the resume-writer window.</b>
+(Brain is not here. Brain is idle.)
+
+User &harr; resume-writer: direct conversation
+  "Add the Google internship."
+  "Change the format to one page."
+  "Generate the PDF."
+
+<b>User is done. Returns to brain window.</b>
+
+User: "Switch to the Kaggle thing."
+Brain:
+  &bull; Reads resume-writer/tasks/resume-google/REPORT.md
+  &bull; Updates tasks.md
+  &bull; Opens auto-build window
+  &bull; User is now talking to auto-build
+
+<b>User is in the auto-build window.</b>
+(Brain is idle again.)
+
+User &harr; auto-build: direct conversation
+  "How's the model doing?"
+  "Try a different feature set."
+  ...</div>
+
+<p>The brain is the home screen. You come to it to navigate. Then you enter an app (agent). The app has the full experience. When you're done, back to home.</p>
+
+<h2>61. What the brain does when idle</h2>
+
+<p>While the user is talking to an agent, the brain is idle. But "idle" doesn't mean "off." The human brain does critical work during idle states &mdash; memory consolidation, garbage collection, system maintenance. So does ours.</p>
+
+<div class="fig"><b>Brain idle tasks:</b>
+
+  1. CLEAN CHECK
+     Scan all agent folders for context contamination.
+     Files that don't match scope &rarr; flag or move.
+     Agents not in agents.md &rarr; register or investigate.
+
+  2. STATUS SWEEP
+     Read all REPORT.md files.
+     Update tasks.md with current status.
+     Mark completed tasks as done.
+
+  3. HEALTH CHECK
+     Any agent folder missing CLAUDE.md? &rarr; write one.
+     Any task folder missing TASK.md? &rarr; flag.
+     Any stale "active" tasks? &rarr; mark as paused.
+
+  4. GROWTH CHECK
+     Any agent handling too many domains? &rarr; suggest split.
+     Any two agents overlapping? &rarr; suggest merge.
+     Any agent's CLAUDE.md outdated? &rarr; suggest rewrite.</div>
+
+<p>This is the immune system + the janitor + the gardener. It runs in the background. The user never sees it. But without it, entropy wins and the system degrades.</p>
+
+<h2>62. The complete system</h2>
+
+<p>Three roles. One interaction pattern. The whole system.</p>
+
+<div class="fig">                    ┌─────────┐
+                    │  USER   │
+                    └────┬────┘
+                         │ talks to
+                    ┌────▼────┐
+                    │  BRAIN  │ understands, launches, maintains
+                    └────┬────┘
+               ┌─────────┼──────────┐
+               │         │          │
+         ┌─────▼───┐ ┌───▼────┐ ┌──▼──────┐
+         │ agent-A │ │ agent-B│ │ agent-C  │  ... N agents
+         └────┬────┘ └────────┘ └─────────┘
+              │
+     ┌────────┼────────┐
+     │                 │
+┌────▼──────┐   ┌──────▼────┐
+│plan-verify│   │  working  │    (when the agent needs to act well)
+└───────────┘   └───────────┘
+
+User &harr; Brain:        navigate, switch, status
+User &harr; Agent:        do the actual work (direct)
+Plan-verify &harr; Working: optimization loop (internal)</div>
+
+<div class="evidence">
+<b>Brain</b> &mdash; directs attention. Understands intent. Launches agents. Maintains system health. Never does the work. Never proxies.<br><br>
+<b>Agent (leaf)</b> &mdash; acts. The user interacts directly. If the action is complex, it splits into plan-verify + working to act well.<br><br>
+<b>Plan-verify</b> &mdash; the evaluator. Reads output cold. Compares to goal. Gives feedback. The loss function.<br><br>
+<b>Working</b> &mdash; the generator. Produces artifacts. Reports results. Acts without judging itself.
+</div>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part VI: Why It Works &mdash; The Theoretical Foundation</div>
+
+<h2>63. The LLM already knows</h2>
+
+<p>Here's what this system does NOT do: teach the LLM domain knowledge.</p>
+
+<p>The LLM already knows how to write resumes. It knows how to build ML models. It knows how to optimize SQL. It knows how to write papers. All of this knowledge is already inside the model, distributed across its parameters.</p>
+
+<p>The system doesn't add knowledge. It <b>activates</b> it.</p>
+
+<div class="key">
+<b>CLAUDE.md doesn't teach. It activates.</b><br>
+Writing "I am a resume writer" doesn't teach the LLM about resumes. It focuses the LLM's existing knowledge on resume-writing. It suppresses everything irrelevant. It creates a clean activation context.<br><br>
+The folder doesn't add information. It <b>removes noise</b>. And removing noise IS the job &mdash; because the model's failure mode is not "doesn't know enough." It's "knows too much and can't focus."
+</div>
+
+<p>This is why the system is so cheap to build. You don't encode domain expertise. You don't write knowledge bases. You don't train specialists. You organize pointers &mdash; folder names, CLAUDE.md files, TASK.md contracts &mdash; that point the LLM's existing knowledge at the right problem.</p>
+
+<h2>64. Entity subspaces: the internal evidence</h2>
+
+<p>We know this is true because we've measured it inside the model.</p>
+
+<p>From 144 experiments on LLM internals (<i>"The Geometry of Knowing and Saying"</i>, math-modeling agent):</p>
+
+<div class="evidence">
+<b>Each entity occupies its own stable subspace.</b><br>
+&bull; Effective rank: r_eff = 5&ndash;9 dimensions<br>
+&bull; Cosine stability: 0.92 across different contexts<br>
+&bull; Angles between entity subspaces: 77&ndash;84&deg; (nearly orthogonal)<br>
+&bull; Countries distinguishable at r_eff = 5.8<br><br>
+
+<b>What this means:</b><br>
+When the model processes "France", a specific 5&ndash;9 dimensional subspace activates. When it processes "Japan", a different subspace activates, nearly orthogonal to the first. The subspaces are stable &mdash; regardless of whether the context says "the capital of France" or "French cuisine" or "France in WWII", the same geometric region lights up.<br><br>
+
+<b>The subspace IS the knowledge.</b> Not a pointer to knowledge. Not an index. The subspace itself is the computational space where the model does its thinking about that entity.
+</div>
+
+<p>The model doesn't store "France" as a fact. It stores France as a <b>geometric region</b> &mdash; a low-rank subspace that activates when France is relevant and stays silent when it's not.</p>
+
+<h2>65. The L14 bottleneck: the internal noise filter</h2>
+
+<p>The model has its own version of "clean context":</p>
+
+<div class="fig">Layer 1&ndash;13:  information accumulates. Multiple entities active.
+Layer 14:      bottleneck. Noise filtered. Only relevant subspace survives.
+Layer 15+:     clean representation &rarr; correct output.
+
+Causal evidence:
+  Intervene at all layers:     20&ndash;46% performance drop
+  Intervene at random layers:  ~0% drop
+  Early/mid layers carry the signal. The bottleneck cleans it.</div>
+
+<p>The model has a built-in isolation mechanism. It doesn't need external help to separate entities &mdash; it does it internally through the bottleneck layer. Noise in, clean signal out. Mixed context in, focused representation out.</p>
+
+<p>The agent architecture mirrors this exactly:</p>
+
+<div class="fig">Model internals:              Agent architecture:
+─────────────────             ─────────────────────
+Entity subspace (r=5-9)   &harr;  Agent folder (isolated)
+cos 0.92 stability        &harr;  CLAUDE.md (consistent identity)
+77-84&deg; between entities  &harr;  Separate folders (no overlap)
+L14 bottleneck (filter)   &harr;  Folder boundary (noise wall)
+Clean representation      &harr;  Clean context
+Correct output            &harr;  Focused work</div>
+
+<h2>66. The architecture mirrors the model</h2>
+
+<p>This is not a metaphor. It is a structural correspondence.</p>
+
+<div class="key">
+<b>Inside the model:</b><br>
+Knowledge lives in subspaces. Each entity has its own geometric region. The regions are nearly orthogonal &mdash; they don't interfere. A bottleneck layer filters noise. Clean subspace &rarr; correct computation.<br><br>
+
+<b>Outside the model (our system):</b><br>
+Knowledge lives in folders. Each agent has its own directory. The directories don't share files &mdash; they don't interfere. CLAUDE.md scopes the context. Clean folder &rarr; focused agent.<br><br>
+
+<b>The folder IS the external subspace.</b><br>
+CLAUDE.md IS the external entity definition.<br>
+The folder boundary IS the external bottleneck.<br>
+The brain IS the external attention mechanism.
+</div>
+
+<p>The system works because it's <b>aligned with how the model already organizes knowledge internally.</b> We're not imposing structure on the model &mdash; we're providing external structure that matches its internal structure. The model meets us halfway.</p>
+
+<h2>67. Diagnosis, not teaching</h2>
+
+<p>The brain's job becomes clear in this light. The brain doesn't teach agents. It doesn't transfer knowledge. It <b>diagnoses</b> the user's intent and <b>activates</b> the right subspace by pointing the model at the right folder.</p>
+
+<div class="fig">User: "I need to write a resume for Google."
+
+Brain diagnoses:
+  Intent: create document (resume)
+  Domain: resume-writing
+  Context needed: JD keywords, user experience, format
+
+Brain activates:
+  Opens resume-writer/ window
+  LLM reads CLAUDE.md &rarr; resume-writing subspace activates
+  LLM reads TASK.md &rarr; specific task context loads
+  LLM already knows how to write resumes
+  It just needed the right activation context</div>
+
+<p>The system is an <b>attention management system</b>, not a knowledge system. The knowledge is already there. The system manages which knowledge is active.</p>
+
+<p>This is, again, exactly what a human brain does. Your visual cortex already knows how to process images. Your motor cortex already knows how to grip. Your language centers already know grammar. The brain doesn't teach any of them. It <b>directs attention</b> to the right system at the right time.</p>
+
+<h2>68. Why the folder name matters so much</h2>
+
+<p>In section 34 we said: naming errors are routing errors. Now we can say why at a deeper level.</p>
+
+<p>The folder name is the <b>entity label</b>. When the model reads "auto-build/", it activates the subspace associated with building, automation, iteration, eval sets. When it reads "resume-writer/", it activates a completely different subspace &mdash; formatting, keywords, professional language, PDF generation.</p>
+
+<div class="fig">Folder name "auto-build":
+  Activates: ML, iteration, eval sets, metrics, loops
+  Suppresses: resumes, SQL, comics, novels
+
+Folder name "resume-writer":
+  Activates: formatting, JD matching, professional tone
+  Suppresses: ML, SQL, comics, novels
+
+Wrong folder name "misc-stuff":
+  Activates: ???
+  Suppresses: nothing
+  Result: unfocused, confused agent</div>
+
+<p>A bad folder name is like a corrupted entity label &mdash; it activates the wrong subspace, or no coherent subspace at all. The model has the knowledge but can't find it because the activation signal is wrong.</p>
+
+<p>This is why naming is structural, not cosmetic. The name IS the activation function.</p>
+
+<h2>69. The double sparsity principle</h2>
+
+<p>From the entity subspace research: knowledge in LLMs is <b>doubly sparse.</b></p>
+
+<div class="fig">Sparsity 1: Token sparsity
+  Not all tokens matter. The entity information concentrates
+  at specific positions (typically the last token of the entity mention).
+
+Sparsity 2: Dimension sparsity
+  Not all dimensions matter. The entity occupies a low-rank
+  subspace (r=5-9) out of thousands of available dimensions.
+
+Entity = sparse patch in token &times; dimension space.</div>
+
+<p>The agent architecture has the same double sparsity:</p>
+
+<div class="fig">Sparsity 1: File sparsity
+  Not all files matter. CLAUDE.md and TASK.md carry the signal.
+  The rest is work product.
+
+Sparsity 2: Folder sparsity
+  Not all folders matter. Only the current agent's folder is active.
+  The other 13 agents are silent.
+
+Agent = sparse patch in file &times; folder space.</div>
+
+<p>Double sparsity is why the system scales. With 14 agents and hundreds of files, only one folder with a few key files is active at any time. The rest is suppressed. Just like the model: thousands of dimensions, but only 5&ndash;9 carry the signal for any given entity.</p>
+
+<h2>70. The complete picture</h2>
+
+<p>The system works at three levels, and they're all the same mechanism:</p>
+
+<table>
+<tr><th>Level</th><th>Knowledge storage</th><th>Activation</th><th>Isolation</th><th>Noise filter</th></tr>
+<tr><td>Model internals</td><td>Subspace (r=5-9)</td><td>Entity label in context</td><td>Orthogonal subspaces (77-84&deg;)</td><td>L14 bottleneck</td></tr>
+<tr><td>Agent architecture</td><td>Folder + files</td><td>CLAUDE.md + folder name</td><td>Separate directories</td><td>Folder boundary</td></tr>
+<tr><td>Brain</td><td>agents.md</td><td>User intent &rarr; launch</td><td>One window per agent</td><td>Brain only directs, never works</td></tr>
+</table>
+
+<div class="key">
+<b>The system doesn't fight the model. It aligns with it.</b><br><br>
+The model organizes knowledge in isolated subspaces. The system organizes work in isolated folders. The model filters noise through bottleneck layers. The system filters noise through folder boundaries. The model activates subspaces through entity labels. The system activates agents through folder names and CLAUDE.md.<br><br>
+This alignment is why the system works with zero training, zero infrastructure, zero configuration. The model was already organized this way. We just gave it an external structure that matches its internal one.
+</div>
+
+<p>The folder structure is not an engineering convenience. It is a <b>geometric alignment</b> between the external organization of work and the internal organization of knowledge. That's why clean folders produce focused agents &mdash; not because of file management, but because clean external structure activates clean internal subspaces.</p>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part VII: What We Got Wrong</div>
+
+<h2>71. The corrections ARE the design</h2>
+
+<p>This document was not written in one pass. It was written across a single session, and the understanding evolved as we wrote. The corrections are not embarrassments &mdash; they are the most valuable content. Each correction reveals a misconception that would have broken the system.</p>
+
+<h2>72. Wrong: one window</h2>
+
+<div class="wrong">
+<b>What we said (section 4, first draft):</b><br>
+"One window. The user just talks. The system grows."<br><br>
+<b>What was wrong:</b><br>
+One window means the brain proxies every conversation. The user talks to the brain. The brain talks to the agent. The agent talks to the brain. The brain talks to the user. Every message passes through the brain. The brain becomes a bottleneck, a translator, a lossy channel.
+</div>
+
+<div class="evidence">
+<b>The correction:</b><br>
+The brain opens agent windows. The user talks <b>directly</b> to the agent. The brain is the home screen, not the conversation partner. Navigate at the brain. Work at the agent. This is natural &mdash; you don't talk to your brain, you talk through it.
+</div>
+
+<p>The correction came from a simple observation: "the natural is not people interact with one window, brain open the agent window, let user interact, it's nature." The user saw what we missed &mdash; the proxy model is unnatural because humans don't proxy their own thoughts.</p>
+
+<h2>73. Wrong: router / switchboard</h2>
+
+<div class="wrong">
+<b>What we said (sections 12, 31, loop_prompt.md, first drafts):</b><br>
+"The brain is a switchboard." "The brain is a router." "Like a telephone operator &mdash; Number please? Plugs the cable."<br><br>
+<b>What was wrong:</b><br>
+A router forwards packets without understanding them. A switchboard connects cables without knowing who's talking. But the brain <b>understands intent</b>. It <b>creates agents that don't exist</b>. It <b>maintains system health</b>. Routers don't create endpoints. Switchboards don't redesign the wiring.
+</div>
+
+<div class="evidence">
+<b>The correction:</b><br>
+The brain is a brain. It directs attention. It launches motor programs. It maintains the organism. The name was right from the start &mdash; the description was wrong. A brain doesn't proxy between your eyes and your hands. It activates the right motor program and lets it run with direct feedback.
+</div>
+
+<p>The too-modest metaphor caused real design errors. If the brain is "just a router," then dispatch means "forward a message." But if the brain is a brain, then dispatch means "launch a window, direct attention, let go." The metaphor shapes the mechanism.</p>
+
+<h2>74. Wrong: priorities for leaf agents</h2>
+
+<div class="wrong">
+<b>What we almost wrote:</b><br>
+Five priorities for leaf agents: start immediately, produce artifacts, report, stop when done, fail loudly.<br><br>
+<b>What was wrong:</b><br>
+We were solving a problem that doesn't exist. The plan-verify + working split already makes all five "priorities" structurally impossible to violate. We were adding instructions where architecture was needed.
+</div>
+
+<div class="evidence">
+<b>The correction:</b><br>
+The leaf agent has ONE goal: act. To make it act <b>well</b>, you add plan-verify + working &mdash; a generator and an evaluator. The evaluator is the loss function. You can't optimize without a loss function, and the loss function must be external to the generator. This is not management. It is optimization.
+</div>
+
+<p>The deeper lesson: <b>don't solve with instructions what you can solve with architecture.</b> Instructions can be ignored. Architecture can't. If you need the agent to stop when it's done, don't tell it to stop &mdash; give it a verifier that decides when it's done.</p>
+
+<h2>75. Wrong: the system teaches knowledge</h2>
+
+<div class="wrong">
+<b>What we implicitly assumed:</b><br>
+CLAUDE.md defines what the agent knows. The folder structure organizes knowledge. The system is a knowledge management system.<br><br>
+<b>What was wrong:</b><br>
+The LLM already knows everything it needs to know about resumes, ML, SQL, and every other domain. CLAUDE.md doesn't teach. It activates. The folder doesn't store knowledge. It removes noise.
+</div>
+
+<div class="evidence">
+<b>The correction:</b><br>
+The system is an <b>attention management system</b>, not a knowledge system. The knowledge is pre-existing in the model's parameters, organized in low-rank subspaces (r=5-9, cos 0.92). The folder name activates the right subspace. CLAUDE.md tightens the scope. The system manages which knowledge is active, not what the knowledge is.
+</div>
+
+<p>This correction came from connecting the agent architecture to the entity subspace research. The same mechanism that organizes entities inside the model (subspaces, orthogonality, bottleneck filtering) is what the folder structure does externally. The system doesn't fight the model. It aligns with it.</p>
+
+<h2>76. The pattern of corrections</h2>
+
+<p>Every correction follows the same pattern:</p>
+
+<div class="fig">Wrong: we overestimated what the system needs to do.
+Right: the system does less than we thought.
+
+One window    &rarr; brain just launches, doesn't proxy
+Router        &rarr; brain just directs, doesn't forward
+Five priorities &rarr; architecture provides them, not instructions
+Knowledge system &rarr; knowledge already exists, system just activates</div>
+
+<p>The system got simpler with every correction. Not more complex. Every time we thought we needed to add something, the answer was: <b>the model already does that. Get out of the way.</b></p>
+
+<div class="key">
+<b>The best system design is the one that removes the most.</b><br><br>
+We didn't add routing &mdash; we removed the proxy.<br>
+We didn't add priorities &mdash; we removed them and used architecture.<br>
+We didn't add knowledge &mdash; we removed noise so existing knowledge could focus.<br>
+We didn't design the system &mdash; we removed our misconceptions about what it needed to be.
+</div>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part VIII: What Emerges</div>
+
+<h2>77. Emergence</h2>
+
+<p>The system has been running for months. Not as a designed whole, but as individual agents that grew from tasks. Now that the brain connects them, new properties emerge that no one designed.</p>
+
+<h2>78. Agents specialize</h2>
+
+<p>auto-build started as "build something." After banking77 (0% &rarr; 82%), it accumulated specs/ and tools/. Its LOOP.md crystallized the RUN-CLUSTER-CHECK-DIAGNOSE-FIX-VERIFY cycle. Now when a new building task arrives, auto-build doesn't start from scratch &mdash; it starts from the loop. The agent has <b>learned a method</b>.</p>
+
+<p>resume-writer started as "write a resume." After three tasks (Google, Meta, general), it accumulated a three-library architecture: experience (append-only facts), preferences (persistent rules), intent (per-task variables). Feedback from one task improved all future tasks. The agent has <b>developed a methodology</b>.</p>
+
+<p>algorithm-optimization started as "optimize." After dozens of tasks, it grew to full P0+P1+P2 &mdash; plan-verify, working, specs, tools. It handles SFT, GRPO, generative-recall pipelines. It's the most complex agent because the domain demanded it. The agent has <b>earned its complexity</b>.</p>
+
+<div class="key">
+<b>Agents don't just accumulate files. They accumulate competence.</b><br>
+Each task teaches the agent something. specs/ captures the method. tools/ captures the code. tasks/ captures the history. Over time, the agent becomes a specialist &mdash; not because we designed it to be, but because the tasks shaped it.
+</div>
+
+<h2>79. The brain learns routes</h2>
+
+<p>agents.md started with 2 agents. Then 6. Now 14. Each new agent was created because a task didn't match any existing domain. The brain's routing table grows organically, shaped by user needs.</p>
+
+<div class="fig">Session 1:  2 agents.   Brain can route: ML, research.
+Session 5:  6 agents.   Brain can route: + resumes, SQL, matching, verification.
+Session 10: 14 agents.  Brain can route: + papers, comics, novels, testing, metacognition.
+
+Each new agent = one more domain the brain can instantly route to.
+The routing table is the brain's accumulated experience.</div>
+
+<p>The brain doesn't get "smarter." Its agents.md gets longer. But the effect is the same &mdash; the system handles more domains, more accurately, with less overhead. The routing table IS the learning.</p>
+
+<h2>80. Agents reproduce</h2>
+
+<p>When an agent's scope grows too large, it splits. This is agent reproduction.</p>
+
+<div class="fig">query-eval started as a general evaluation system.
+It grew to handle: query tagging, intent classification, golden sets.
+Eventually it needed its own plan-verify + working.
+
+EvalAuto-Agent was the precursor &mdash; superseded when the domain
+clarified into a specialized query understanding system.
+
+The ancestor died. The descendant specialized.</div>
+
+<p>The clean check catches this: "this agent is handling too many domains &rarr; suggest split." The brain creates a new agent from the part that doesn't fit. The old agent narrows. Two agents exist where one used to.</p>
+
+<p>This is natural selection without selection pressure. The pressure is <b>context contamination</b> &mdash; when an agent's folder gets mixed, its outputs degrade. The split resolves the contamination. The surviving agents are the ones with clean contexts.</p>
+
+<h2>81. Cross-pollination</h2>
+
+<p>Agents don't talk to each other. But knowledge flows between them through the brain.</p>
+
+<div class="fig">math-modeling discovers: entities have stable subspaces (cos 0.92).
+Brain writes this insight into the design doc (this document).
+auto-build reads the design doc and adopts: clean folder = focused agent.
+resume-writer benefits: clean context = better resumes.
+
+The insight originated in math-modeling.
+It propagated through the brain.
+It improved every agent.
+
+No agent-to-agent communication was needed.
+The brain is the shared channel.</div>
+
+<p>This is how human brains work. Your visual cortex doesn't talk to your motor cortex directly. Insights propagate through shared attention and shared context. The brain is the bus.</p>
+
+<h2>82. System memory</h2>
+
+<p>Nothing is forgotten. Every experiment, every report, every failed attempt &mdash; it's on disk.</p>
+
+<div class="fig">math-modeling/tasks/: 144 experiment results
+auto-build/tasks/banking77/: full iteration history (0% to 82%)
+resume-writer/tasks/: three complete resumes + feedback loops
+algorithm-optimization/tasks/: dozens of optimization runs
+
+Total system memory: the entire filesystem.
+Cost of memory: zero (disk is free).
+Retrieval: read the file.
+Decay: none (files don't forget).</div>
+
+<p>A new LLM session opens any folder and has the complete history. No training. No fine-tuning. No vector database. Just files. The filesystem IS the long-term memory. REPORT.md is the summary. The task folder is the detail.</p>
+
+<h2>83. Organic growth</h2>
+
+<p>The system was not designed to have 14 agents. It grew because 14 distinct domains emerged from the user's needs.</p>
+
+<div class="fig">Month 1: math-modeling (research)
+Month 2: + auto-build (competitions), + algorithm-optimization (pipelines)
+Month 3: + resume-writer, + text-to-sql, + brand-matching
+Month 4: + paper-writing, + comic-agent, + novel-writer
+Month 5: + brain (this session: connecting them all)
+
+Each agent was born from a task.
+No one planned 14 agents.
+The user's needs shaped the system.</div>
+
+<p>This is the most important emergent property: <b>the system's shape reflects the user's work, not the designer's plan.</b> If the user does more ML, more ML agents emerge. If the user writes more papers, more writing agents emerge. The system is a mirror of the user's needs.</p>
+
+<h2>84. What wasn't designed</h2>
+
+<p>None of these properties were designed:</p>
+
+<div class="evidence">
+&bull; Agent specialization &mdash; emerged from task accumulation<br>
+&bull; Brain routing improvement &mdash; emerged from agents.md growth<br>
+&bull; Agent reproduction &mdash; emerged from clean check + scope creep<br>
+&bull; Cross-pollination &mdash; emerged from shared brain context<br>
+&bull; System memory &mdash; emerged from filesystem persistence<br>
+&bull; Organic growth &mdash; emerged from user needs<br><br>
+All were emergent. All came from the same simple rules:<br>
+1. One folder per agent<br>
+2. CLAUDE.md defines scope<br>
+3. TASK.md in, REPORT.md out<br>
+4. Clean check catches contamination<br>
+5. Brain directs attention
+</div>
+
+<p>Five rules. Six emergent properties. The system is more than the sum of its rules because the rules interact. Clean context + task accumulation = specialization. Clean check + scope creep = reproduction. Brain routing + specialization = organic growth.</p>
+
+<p>This is what happens when you align with the model's internal structure rather than fighting it. The model wants to specialize (subspaces). The system lets it (folders). The model wants clean input (bottleneck). The system provides it (isolation). The model wants activation (entity labels). The system gives it (CLAUDE.md + folder names). Everything that emerges was already latent in the alignment.</p>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part IX: Building New Agents</div>
+
+<h2>85. The CREATE protocol</h2>
+
+<p>When the brain needs to create a new agent, it doesn't build from scratch. It assembles from existing infrastructure. Two agents are the construction tools:</p>
+
+<div class="fig"><b>knowledge-base</b> &mdash; the parts warehouse
+  domains/          12 domain READMEs (ml-training, sql, data, code,
+                    research, business, content-creation, multimedia,
+                    meta-cognition, evaluation, security, verification,
+                    workflow-automation)
+  platforms/        9 platform READMEs + tools (gpu_cluster, ssh_relay,
+                    file_transfer, bigquery, mcp, docker, websocket,
+                    selenium, gcs)
+
+<b>plan-verify</b> &mdash; the blueprint factory
+  common/           shared protocols (PROTOCOL.md, WORK_AGENT_PROTOCOL.md,
+                    TASK_PLAN_REQUIREMENTS.md, TOOL_USAGE.md, KNOWLEDGE_BASE.md)
+  tools/            reusable tools (tmux, shell, browser, terminal)
+  sync.py           sets up plan-verify/ + working/ for any new task</div>
+
+<p>The brain is the assembler. knowledge-base provides domain knowledge + platform tools. plan-verify provides the verification structure. The brain puts them together.</p>
+
+<h2>86. CREATE step by step</h2>
+
+<div class="fig"><b>CREATE(user_request):</b>
+
+  1. NAME &mdash; pick the activation function
+     Parse the domain from user's request.
+     kebab-case, 2-3 words. The name activates the right subspace.
+     "I need to analyze churn data" &rarr; data-analysis
+     "Help me train a model"        &rarr; ml-training (wait &mdash; already exists?)
+
+  2. CHECK &mdash; does this domain already exist?
+     Read agents.md. If match &rarr; route, don't create.
+     This prevents agent duplication.
+
+  3. CLASSIFY &mdash; ask knowledge-base
+     Which domain(s)? &rarr; knowledge-base/domains/
+     Which platform(s)? &rarr; knowledge-base/platforms/
+     The knowledge-base already has classification rules.
+
+  4. STRUCTURE &mdash; decide complexity
+     Simple task (one-shot, verifiable by inspection)?
+       &rarr; P0 only: CLAUDE.md + tasks/
+     Complex task (needs iteration, feedback loop)?
+       &rarr; P0 + P1: CLAUDE.md + plan-verify/ + working/ + tasks/
+       &rarr; Use plan-verify/sync.py to set up the structure
+
+  5. WRITE CLAUDE.md &mdash; the operating protocol
+     Not just identity. The full protocol:
+       - Who am I (identity + scope)
+       - What I do NOT handle (boundaries)
+       - Entry check (how I check my own task context)
+       - Method (how I work)
+       - Files (TASK.md in, REPORT.md out)
+
+  6. SEED KNOWLEDGE &mdash; from knowledge-base
+     Copy relevant domains/{name}/README.md &rarr; agent's specs/
+     Copy relevant platforms/{name}/ tools &rarr; agent's tools/
+     The agent starts with domain knowledge, not from zero.
+
+  7. REGISTER &mdash; add to agents.md
+
+  8. LAUNCH &mdash; open the window</div>
+
+<h2>87. The three infrastructure agents</h2>
+
+<p>The system runs on three infrastructure agents. Everything else is built from them.</p>
+
+<table>
+<tr><th>Infrastructure</th><th>What it is</th><th>What it provides</th></tr>
+<tr><td><b>brain</b></td><td>The attention system</td><td>Intent diagnosis, agent matching, window launching, system maintenance</td></tr>
+<tr><td><b>plan-verify</b></td><td>The template + memory</td><td>Verification protocol (common/), reusable tools (tools/), sync.py to replicate structure</td></tr>
+<tr><td><b>knowledge-base</b></td><td>The parts warehouse</td><td>12 domain knowledge bases, 9 platform implementations with tools</td></tr>
+</table>
+
+<p>These three are the entire operating system. Every domain agent is assembled from them:</p>
+
+<div class="key">
+<b>brain</b> decides WHICH agent to create or launch.<br>
+<b>knowledge-base</b> provides WHAT the agent knows &mdash; domain patterns, failure modes, platform tools.<br>
+<b>plan-verify</b> provides HOW the agent operates &mdash; the verification protocol, the common memory, the working agent structure.<br><br>
+Brain = attention. Knowledge-base = knowledge. Plan-verify = method.<br>
+Three infrastructure agents. Everything else is assembled from these three.
+</div>
+
+<p><b>plan-verify</b> deserves special attention. It's not just a "verifier." It's a <b>template factory + shared memory</b>:</p>
+
+<div class="fig"><b>Template:</b>
+  common/PROTOCOL.md              &larr; the three-step verification protocol
+  common/WORK_AGENT_PROTOCOL.md   &larr; how working agents operate
+  common/TASK_PLAN_REQUIREMENTS.md &larr; what a good plan must include
+  common/TOOL_USAGE.md            &larr; how to use tools correctly
+  tools/                          &larr; reusable tools (tmux, browser, shell)
+  sync.py                         &larr; replicates all of this into any new agent
+
+<b>Memory:</b>
+  common/KNOWLEDGE_BASE.md        &larr; cross-task lessons learned
+  common/MEMORY_RULES.md          &larr; what to remember vs forget
+
+When plan-verify/sync.py runs on a new agent, it copies:
+  &bull; The protocol (how to plan, how to verify)
+  &bull; The tools (tmux, shell, browser)
+  &bull; The accumulated memory (lessons from all previous tasks)
+
+Every new agent starts with the FULL experience of all previous agents.
+Not from zero. From the accumulated common knowledge.</div>
+
+<p>This is why plan-verify is infrastructure, not just a role. It's the mechanism that transfers operational knowledge across agents. Each agent's plan-verify/ inherits from the shared common/. When one agent learns something (e.g., "always check schema before running SQL"), that lesson goes into common/KNOWLEDGE_BASE.md and propagates to ALL agents via sync.</p>
+
+<h2>88. Two types of agents</h2>
+
+<p>There are not three types of agents. There are two.</p>
+
+<table>
+<tr><th>Type</th><th>Has agents.md?</th><th>Does the work?</th><th>Examples</th></tr>
+<tr><td><b>Brain-type</b></td><td>Yes &mdash; routes to sub-agents</td><td>No &mdash; directs attention</td><td>brain/, math-modeling/</td></tr>
+<tr><td><b>Leaf agent</b></td><td>No &mdash; does the work itself</td><td>Yes &mdash; acts</td><td>auto-build/, resume-writer/, algorithm-optimization/</td></tr>
+</table>
+
+<p>math-modeling proves this. Look at its structure:</p>
+
+<div class="fig">math-modeling/                        brain-type (has agents.md, routes)
+  CLAUDE.md                           "Not an execution agent &mdash; an exploration,
+                                       routing, and management agent"
+  agents.md                           execution agent registry
+  specs/                              domain knowledge
+  ideas/                              idea drafts
+  tasks/plans/                        experiment plans (dispatched DOWN)
+  tasks/reports/                      results (flow UP)
+
+  &rarr; routes to:
+    algorithm-optimization/           leaf agent (does the work)
+      plan-verify/                    plans + verifies
+      working/                        acts</div>
+
+<p>math-modeling is a brain. Not THE brain &mdash; A brain. Scoped to LLM internals research. It has the same structure as brain/: agents.md, routing, dispatch down, reports up. The only difference is scope.</p>
+
+<div class="key">
+<b>The recursive pattern:</b><br><br>
+brain/ is a brain for ALL domains.<br>
+math-modeling/ is a brain for ONE domain (LLM internals).<br>
+algorithm-optimization/ is a leaf agent INSIDE math-modeling/.<br><br>
+Same pattern at every level. Brain-type agents direct. Leaf agents act. The filesystem is the recursion.
+</div>
+
+<p>A leaf agent that grows complex enough becomes a brain-type agent. It gains its own agents.md, creates sub-agents, and starts routing instead of doing. This is the growth path from section 21 &mdash; taken to its conclusion:</p>
+
+<div class="fig">Birth:     CLAUDE.md + tasks/                   (leaf, P0)
+Growth:    + specs/ + tools/                     (leaf, P0+P2)
+Maturity:  + plan-verify/ + working/             (leaf, P0+P1+P2)
+Evolution: + agents.md + sub-agents              (becomes brain-type)</div>
+
+<p>The leaf-to-brain transition is the system's growth mechanism. When one agent can't handle its domain alone, it splits into a brain + sub-agents. math-modeling did this. The brain doesn't design it &mdash; it emerges from scope pressure.</p>
+
+<p>The three infrastructure agents fit this classification too:</p>
+
+<div class="fig"><b>brain</b>           &mdash; brain-type (directs attention across ALL agents)
+<b>plan-verify</b>    &mdash; neither &mdash; it's a template factory + shared memory
+<b>knowledge-base</b> &mdash; neither &mdash; it's a parts warehouse
+
+plan-verify and knowledge-base are not agents that route or act.
+They are infrastructure that OTHER agents are built from.
+They're closer to libraries than to agents.</div>
+
+<h2>88. The recursive system</h2>
+
+<p>The system is recursive. Every agent is one of two types. A leaf can become a non-leaf when it grows. There are no fixed levels.</p>
+
+<div class="fig"><b>Leaf agent</b> — does the work.
+  CLAUDE.md       &larr; identity + scope + entry check
+  tasks/          &larr; TASK.md in, REPORT.md out
+  plan-verify/    &larr; (if complex) entry check + plan + verify
+  working/        &larr; (if complex) act
+  Template: from plan-verify infra (common/ + tools/ + sync.py)
+
+<b>Non-leaf agent</b> — knows its sub-agents, directs attention.
+  CLAUDE.md       &larr; identity + routing protocol
+  agents.md       &larr; sub-agent registry
+  specs/          &larr; domain knowledge map
+  tasks/          &larr; plans down, reports up
+  Template: from brain/ pattern (CLAUDE.md + agents.md + loop)</div>
+
+<p>That's it. Two types. Both have templates from infrastructure. A leaf that grows too complex becomes a non-leaf &mdash; it gains agents.md and starts routing instead of doing. There is no "level 1" or "level 2." There is only: does this agent have sub-agents or not?</p>
+
+<h2>89. Both types have templates</h2>
+
+<p>This is the key insight: the infrastructure provides templates for BOTH types.</p>
+
+<table>
+<tr><th></th><th>Leaf template</th><th>Non-leaf template</th></tr>
+<tr><td><b>Source</b></td><td>plan-verify/ infra</td><td>brain/ pattern</td></tr>
+<tr><td><b>What it provides</b></td><td>plan-verify/ + working/ + common protocols + tools</td><td>agents.md + routing protocol + specs/ + loop</td></tr>
+<tr><td><b>How it's applied</b></td><td>plan-verify/sync.py copies structure</td><td>Brain writes CLAUDE.md following its own pattern</td></tr>
+<tr><td><b>Entry check</b></td><td>plan-verify does it (task level)</td><td>The non-leaf does it (sub-agent level)</td></tr>
+<tr><td><b>Examples</b></td><td>resume-writer, text-to-sql, auto-build</td><td>brain, math-modeling</td></tr>
+</table>
+
+<div class="key">
+<b>plan-verify infra</b> is the template for leaf agents.<br>
+<b>brain/</b> is the template for non-leaf agents.<br><br>
+When brain.sh creates a leaf: it uses plan-verify/sync.py to set up the structure.<br>
+When brain.sh creates a non-leaf: it copies the brain/ pattern &mdash; CLAUDE.md with routing protocol, agents.md, specs/.
+</div>
+
+<h2>90. The recursion</h2>
+
+<p>Non-leaf agents contain sub-agents. Sub-agents can be leaf or non-leaf. The recursion has no fixed depth &mdash; it grows as the domain demands.</p>
+
+<div class="fig">brain/ (non-leaf)
+  │ agents.md → knows all sub-agents
+  │
+  ├── math-modeling/ (non-leaf)
+  │     │ agents.md → knows its sub-agents
+  │     │ specs/ → domain knowledge
+  │     │ ideas/ → exploration
+  │     │
+  │     └── algorithm-optimization/ (leaf)
+  │           plan-verify/ + working/
+  │
+  ├── resume-writer/ (leaf)
+  │     plan-verify/ + working/
+  │
+  ├── auto-build/ (leaf)
+  │     LOOP.md, tasks/
+  │
+  ├── text-to-sql/ (leaf)
+  │     plan-verify/ + working/
+  │
+  ├── brand-matching/ (leaf)
+  │     plan-verify/ + working/
+  │
+  ├── comic-agent/ (leaf, simple)
+  │     tasks/ only
+  │
+  └── ... (11 more agents)</div>
+
+<p>Today, math-modeling is the only non-leaf below brain/. Tomorrow, any leaf could become a non-leaf. If resume-writer starts handling multiple domains (tech resumes, academic CVs, cover letters), it might gain its own agents.md and become a non-leaf with specialized sub-agents. The structure isn't designed &mdash; it grows.</p>
+
+<div class="fig"><b>The growth path:</b>
+
+  leaf (simple)     CLAUDE.md + tasks/
+       ↓ tasks get complex
+  leaf (complex)    + plan-verify/ + working/
+       ↓ domain gets broad
+  non-leaf          + agents.md + sub-agents
+       ↓ sub-domain gets broad
+  non-leaf's sub-agent becomes non-leaf too
+       ↓ ...
+  recursion continues as far as needed</div>
+
+<h2>91. What stays the same at every depth</h2>
+
+<p>Regardless of depth, regardless of leaf or non-leaf:</p>
+
+<div class="key">
+<b>The contract:</b> TASK.md flows down. REPORT.md flows up.<br>
+<b>The identity:</b> CLAUDE.md defines scope. The folder name activates the subspace.<br>
+<b>The isolation:</b> each agent has its own folder. No cross-contamination.<br>
+<b>The check:</b> every agent checks its own scope.<br>
+&bull; Non-leaf checks sub-agents (do they exist? scope violations?)<br>
+&bull; Leaf's plan-verify checks tasks (context clean? output matches plan?)<br>
+&bull; Leaf P0 checks itself (entry check in CLAUDE.md)<br><br>
+
+<b>The infrastructure:</b><br>
+&bull; brain/ is the template for every non-leaf<br>
+&bull; plan-verify/ is the template for every leaf<br>
+&bull; knowledge-base/ seeds domain knowledge into any new agent<br><br>
+
+Same pattern. Any depth. No levels. Just: leaf or non-leaf.
+</div>
+
+<h2>92. The full system</h2>
+
+<div class="fig"><b>── INFRASTRUCTURE ──</b>
+
+brain/                    non-leaf template + attention system
+  CLAUDE.md               routing protocol (template for non-leaf agents)
+  agents.md               sub-agent registry
+  tools/brain.sh          launch + create (leaf or non-leaf)
+  loop_prompt.md          operational loop
+
+plan-verify/              leaf template + shared memory
+  common/                 protocols synced to ALL leaf agents
+  tools/                  reusable tools synced to ALL leaf agents
+  sync.py                 replicates structure to any new leaf agent
+
+knowledge-base/           parts warehouse (for both types)
+  domains/ (12)           domain knowledge
+  platforms/ (9)          platform tools
+
+
+<b>── AGENTS (recursive) ──</b>
+
+brain/ (non-leaf)
+  ├── math-modeling/ (non-leaf → has its own sub-agents)
+  │     └── algorithm-optimization/ (leaf)
+  ├── resume-writer/ (leaf)
+  ├── auto-build/ (leaf)
+  ├── text-to-sql/ (leaf)
+  ├── brand-matching/ (leaf)
+  ├── paper-writing/ (leaf)
+  ├── query-eval/ (leaf)
+  ├── online-testing/ (leaf)
+  ├── comic-agent/ (leaf, simple)
+  ├── metacognition/ (leaf)
+  └── novel-writer/ (leaf, simple)
+
+Any leaf can become non-leaf. The tree grows from use.</div>
+
+<h2>90. Three levels, each checks its own</h2>
+
+<div class="key">
+<b>Brain</b> checks at the <b>agent level</b>:<br>
+&bull; Does this agent exist? Does it have a CLAUDE.md?<br>
+&bull; Is it registered in agents.md?<br>
+&bull; Clean check: files match scope? agents overlap?<br>
+&bull; Match, create, launch.<br><br>
+
+<b>Plan-verify</b> checks at the <b>task level + output level</b>:<br>
+&bull; <b>Entry check:</b> Is the task folder clean? TASK.md current? Stale files?<br>
+&bull; <b>Plan:</b> Read TASK.md, decompose into steps, dispatch to working.<br>
+&bull; <b>Verify:</b> Read REPORT.md, compare to plan. Pass or feedback.<br>
+Plan-verify IS the agent's self-check mechanism. It does all three: entry check + planning + verification.<br><br>
+
+<b>Working</b> checks <b>nothing</b>. It acts.
+</div>
+
+<p>Three levels, not four. The brain checks agents. Plan-verify checks tasks AND outputs &mdash; it's the entry check, the planner, and the loss function, all in one role. Working just acts. No level reaches into another's business.</p>
+
+<p>For P0 agents (no plan-verify), the entry check lives in the agent's own CLAUDE.md &mdash; because there's no verifier to do it. For agents with plan-verify, the entry check is plan-verify's first step.</p>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Part X: The Communication Protocol</div>
+
+<h2>93. The problem: mechanism mixed with agents</h2>
+
+<p>Right now, brain's CLAUDE.md contains both:</p>
+
+<div class="wrong">
+<b>Mechanism:</b> HOW to parse intent, match domain, resolve to agent<br>
+<b>Data:</b> WHICH agents exist (agents.md)<br>
+<b>Behavior:</b> WHAT to do when matching, creating, launching<br><br>
+All three are mixed in one CLAUDE.md. When math-modeling needs the same routing capability for its sub-agents, it has to RE-IMPLEMENT the pattern. When a new non-leaf agent is created, it has to copy the brain's routing logic by hand.
+</div>
+
+<p>This is the same mistake we made with plan-verify before it became infrastructure. The verification protocol was embedded in each agent. Then we extracted it into plan-verify/common/ and sync.py. Now every agent gets the protocol for free.</p>
+
+<p>The communication/routing mechanism needs the same treatment: <b>extract it, isolate it, make it reusable.</b></p>
+
+<h2>94. What communication is</h2>
+
+<p>Communication is how data flows between agents. It's the pipe, not the shell.</p>
+
+<div class="fig"><b>The contract:</b>
+
+  Down:  TASK.md flows from sender to receiver
+  Up:    REPORT.md flows from receiver back to sender
+
+  Sender describes WHAT it needs (intent), never WHO should do it.
+  Receiver reads TASK.md, works, writes REPORT.md.
+  Neither knows the other's name.</div>
+
+<p>That's the entire protocol. The non-leaf agent decides WHERE to send (that's attention, the brain's job). Communication only defines HOW it flows.</p>
+
+<h2>95. The TASK.md contract</h2>
+
+<div class="fig"><b>Every TASK.md, everywhere in the system:</b>
+
+  ## Intent
+  What I need done (domain language, not agent names)
+
+  ## Context
+  What the fulfiller needs to know
+
+  ## Deliverable
+  What I expect back</div>
+
+<p>This format is the same whether brain/ sends to resume-writer/, or math-modeling/ sends to algorithm-optimization/, or plan-verify/ sends to working/. One format. Any depth. Any agent type.</p>
+
+<h2>96. Isolation</h2>
+
+<p>Communication is isolated infrastructure &mdash; separate from every agent that uses it.</p>
+
+<div class="fig"><b>Four infrastructure components:</b>
+
+  brain/              attention       decides WHERE to send
+  plan-verify/        verification    decides HOW WELL it was done
+  knowledge-base/     knowledge       provides WHAT to know
+  communication/      communication   defines HOW data flows
+
+Each is independent. Each has one job. No overlaps.
+  brain:              the shell (connects programs)
+  communication:      the pipe (carries data)
+  plan-verify:        the debugger (checks output)
+  knowledge-base:     the library (provides parts)</div>
+
+<h2>97. What agents never know</h2>
+
+<div class="fig">A leaf agent never knows:
+  &bull; Who sent the TASK.md
+  &bull; Who reads the REPORT.md
+  &bull; What other agents exist
+  &bull; Where in the tree it sits
+
+A non-leaf agent never knows:
+  &bull; The internal structure of sub-agents
+  &bull; How the sub-agent does the work
+  &bull; Other non-leaf agents at the same scope
+
+The ONLY coupling:
+  &bull; TASK.md format (universal)
+  &bull; REPORT.md format (universal)</div>
+
+<p>This is Unix pipes. <code>grep</code> doesn't know about <code>awk</code>. They communicate through stdin/stdout &mdash; a universal contract. The pipe is isolated from both programs.</p>
+
+<h2>98. This is a specification</h2>
+
+<p>This document is not documentation of one implementation. It is a <b>specification</b> that anyone can implement.</p>
+
+<div class="fig"><b>What's universal (the spec):</b>
+  &bull; Two agent types: leaf and non-leaf
+  &bull; Four infrastructure roles: attention, verification, knowledge, communication
+  &bull; The contracts: TASK.md down, REPORT.md up
+  &bull; The recursion: non-leaf contains leaf or non-leaf
+  &bull; Clean context = focused agent (aligns with model internals)
+
+<b>What's one implementation (ours):</b>
+  &bull; Filesystem as the data store
+  &bull; CLAUDE.md as the identity file
+  &bull; brain.sh as the launcher
+  &bull; Terminal.app as the window manager
+  &bull; Claude as the LLM</div>
+
+<p>Someone else might implement this with:</p>
+
+<div class="fig">&bull; Database instead of filesystem
+&bull; Web UI instead of Terminal windows
+&bull; REST API instead of files
+&bull; GPT or Gemini instead of Claude
+&bull; Python framework instead of bash scripts
+&bull; Docker containers instead of folders</div>
+
+<p>The spec doesn't care. The principles are the same:</p>
+
+<div class="key">
+<b>1.</b> Two agent types: leaf (acts) and non-leaf (directs).<br>
+<b>2.</b> Four infrastructure roles, each isolated: attention, verification, knowledge, communication.<br>
+<b>3.</b> One contract: task down, report up. Sender describes WHAT, not WHO.<br>
+<b>4.</b> Recursive: non-leaf can contain non-leaf. Any depth.<br>
+<b>5.</b> The system activates existing knowledge, doesn't teach new knowledge.<br>
+<b>6.</b> Each level checks its own scope. No level reaches into another.<br>
+<b>7.</b> Leaf grows to non-leaf when scope pressure demands it.<br><br>
+Seven principles. Implementation-free. Build it however you want.
+</div>
+
+<hr>
+<div style="text-align:center;color:#999;font-size:0.8em;margin-bottom:-10px;">Epilogue</div>
+
+<h2>101. What this document is</h2>
+
+<p>This document was written in one session. It started as a design spec and became a theory paper. The evolution was not planned &mdash; it emerged from the process of building the system while writing about it.</p>
+
+<div class="fig">Part  I:    "We made a mistake"            (problem)
+Part  II:   "The architecture"             (design)
+Part  III:  "Building the brain"           (implementation)
+Part  IV:   "The leaf agent acts"          (leaf theory)
+Part  V:    "The brain is a brain"         (self-correction)
+Part  VI:   "The LLM already knows"        (theoretical foundation)
+Part  VII:  "What we got wrong"            (meta-learning)
+Part  VIII: "What emerges"                 (emergent properties)
+Part  IX:   "Building new agents"          (construction + recursion)
+Part  X:    "The communication protocol"       (isolated communication + specification)
+Epilogue:   "The one sentence"                 (this)</div>
+
+<p>The document is both a REPORT.md and a specification. It describes one implementation (filesystem + Claude) and defines the principles for any implementation.</p>
+
+<h2>100. The seven principles</h2>
+
+<div class="key">
+<b>1.</b> Two agent types: leaf (acts) and non-leaf (directs). A leaf can become non-leaf.<br>
+<b>2.</b> Four infrastructure roles, each isolated: attention, verification, knowledge, communication.<br>
+<b>3.</b> One contract: TASK.md down, REPORT.md up. Sender describes WHAT, not WHO.<br>
+<b>4.</b> Recursive: non-leaf can contain non-leaf. Any depth. No fixed levels.<br>
+<b>5.</b> The system activates existing knowledge, doesn't teach new knowledge.<br>
+<b>6.</b> Each level checks its own scope. No level reaches into another.<br>
+<b>7.</b> Clean context = focused agent. Aligns with the model's internal geometry.
+</div>
+
+<h2>101. The one sentence</h2>
+
+<p>From math-modeling's loop: "State it in one sentence. If you need two, you don't understand it yet."</p>
+
+<div class="key" style="text-align:center; font-size: 1.1em;">
+<b>The agent system works because folders activate the same subspaces<br>that the model already uses to organize knowledge internally.</b>
+</div>
+
+<p>Everything else &mdash; the two types, the four infrastructure roles, the contracts, the recursion, the seven principles &mdash; follows from this one sentence.</p>
+
+<hr>
+
+<p style="text-align:center; color:#666; font-size:0.9em;">
+Seven principles. Implementation-free.<br>
+Two agent types. Four infrastructure roles. One contract.<br>
+Recursive. Clean context. Activates, doesn't teach.<br><br>
+This is a specification. Build it however you want.<br>
+We built it with files. You might build it differently.<br>
+The principles are the same.<br><br>
+<b>We didn't design a system. We discovered seven principles<br>
+and removed everything else.</b>
+</p>
+
+<hr>
+
+<h2>References</h2>
+
+<p style="font-size:0.85em; line-height:1.7;">
+[1] Chen et al., "Identity as Attractor: Geometric Evidence for Persistent Agent Architecture in LLM Activation Space," arXiv:2604.12016, April 2026. <i>Independent evidence that identity documents induce attractor-like representational structure in LLM activation space &mdash; confirming the core mechanism of this architecture.</i><br><br>
+[2] Park et al., "The Linear Representation Hypothesis and the Geometry of Large Language Models," arXiv:2311.03658, 2023. <i>Establishes that concepts are represented as linear subspaces in LLM activation space.</i><br><br>
+[3] Mei et al., "AIOS: LLM Agent Operating System," arXiv:2403.16971, 2024. <i>An LLM agent operating system with module isolation and context management. Software-based approach; does not connect to model internal geometry.</i><br><br>
+[4] Pike et al., "Plan 9 from Bell Labs," Computing Systems, 1995. <i>The filesystem-as-namespace philosophy that inspired the folder-based coordination mechanism.</i><br><br>
+[5] Entity subspace measurements (r_eff=5&ndash;9, cos=0.92, angles 77&ndash;84&deg;) from ongoing research by the author. 144 experiments across entity types, layers, and interventions. Paper in preparation: "The Geometry of Knowing and Saying."
+</p>
+
+</body>
+</html>

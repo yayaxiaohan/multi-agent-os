@@ -2312,7 +2312,111 @@ When brain.sh creates a non-leaf: it copies the brain/ pattern &mdash; CLAUDE.md
 Same pattern. Any depth. No levels. Just: leaf or non-leaf.
 </div>
 
-<h2>92. The full system</h2>
+<h2>92. What a real leaf agent looks like</h2>
+
+<p>Theory is abstract. Here is a concrete leaf agent that ran 30 task iterations across two sub-projects, with plan-verify catching errors the working agent missed.</p>
+
+<div class="fig"><b>brand-matching/</b>                           leaf agent (complex)
+  CLAUDE.md                                identity + scope + boundaries
+  plan-verify/                             plans + verifies
+    CLAUDE.md                              verification protocol
+    common/                                synced from plan-verify infra
+      PROTOCOL.md                          reflection &rarr; follow-up &rarr; test
+      WORK_AGENT_PROTOCOL.md               signal output, report format
+      TASK_PLAN_REQUIREMENTS.md            what a good plan must include
+      TOOL_USAGE.md                        how to use tools
+      KNOWLEDGE_BASE.md                    cross-task lessons
+    specs/                                 domain knowledge (6 specs)
+      WORKSTREAM_ARCHITECTURE.md           how the domain works
+      BR_BRAND_MINING.md                   sub-project 1 spec
+      MX_BRAND_MAPPING.md                  sub-project 2 spec
+    tools/                                 synced from plan-verify infra
+      terminal/                            tmux, spawn_work_agent
+      browser/                             web automation
+      shell/                               shell tools
+  working/                                 acts
+    CLAUDE.md                              "I execute. I report."
+    project-1/                             sub-project 1
+      spec.md                              domain spec
+      code/                                14 Python scripts (iterated)
+      data/                                input data
+      output/                              results
+      tasks/
+        plans/                             14 plans (one per iteration)
+          001_data_prep.md
+          002_core_cluster.md
+          ...
+          014_cross_validate.md
+        reports/                           14 reports (matched to plans)
+          001_data_prep.md
+          ...
+          014_cross_validate.md
+    project-2/                             sub-project 2
+      (same structure, 16 iterations)
+    tools/                                 domain-specific tools
+      ssh_relay/                           remote execution
+      file_transfer/                       data movement</div>
+
+<p>What to notice:</p>
+
+<div class="key">
+&bull; <b>plan-verify/common/</b> was synced from the plan-verify infra &mdash; the agent got the full protocol + tools for free.<br>
+&bull; <b>plan-verify/specs/</b> contains domain knowledge seeded from knowledge-base and accumulated through tasks.<br>
+&bull; <b>working/tasks/plans/</b> and <b>working/tasks/reports/</b> are matched pairs &mdash; every plan has a report. 14 iterations in project-1, 16 in project-2. That's 30 plan-verify cycles.<br>
+&bull; <b>working/code/</b> grew from 1 script to 14 &mdash; each iteration added or refined code. The agent specialized through use.<br>
+&bull; The working agent never decided "am I done?" Plan-verify decided. Working just acted and reported.
+</div>
+
+<h2>93. What a real non-leaf agent looks like</h2>
+
+<p>A non-leaf agent has the brain pattern: agents.md, routing, specs, tasks/plans down and tasks/reports up.</p>
+
+<div class="fig"><b>math-modeling/</b>                            non-leaf agent
+  CLAUDE.md                                "Not an execution agent &mdash;
+                                            an exploration, routing,
+                                            and management agent"
+  agents.md                                sub-agent registry
+  specs/                                   domain knowledge (4 modules)
+    DOMAINS.md                             domain map: what we're exploring
+    RESOURCES.md                           papers, textbooks, code
+    METHODS.md                             from intuition to experiment
+    DISPATCH.md                            routing logic + protocol
+  ideas/                                   immature idea drafts
+  tasks/
+    plans/                                 experiment plans (dispatched DOWN)
+    reports/                               results (flow UP)
+
+  &rarr; routes to sub-agents:
+    algorithm-optimization/                leaf (does the ML work)
+      plan-verify/ + working/
+    (future sub-agents as domains emerge)</div>
+
+<p>What to notice:</p>
+
+<div class="key">
+&bull; <b>agents.md</b> &mdash; this is what makes it non-leaf. It knows its sub-agents and routes to them.<br>
+&bull; <b>specs/</b> has four modules &mdash; the domain knowledge accumulated from 144 experiments. This is P2 (knowledge).<br>
+&bull; <b>ideas/</b> &mdash; a staging area for immature thoughts. Not dispatched until they crystallize into plans.<br>
+&bull; <b>tasks/plans/ and tasks/reports/</b> &mdash; the same contract as a leaf, but math-modeling writes plans DOWN to sub-agents and reads reports UP from them.<br>
+&bull; <b>CLAUDE.md explicitly says "not an execution agent"</b> &mdash; it routes, explores, manages. It does NOT do the ML work. algorithm-optimization does.<br>
+&bull; If a new research direction emerges (e.g., embedding geometry), math-modeling would create a new sub-agent for it. The non-leaf grows by spawning leaves.
+</div>
+
+<h2>94. The contrast</h2>
+
+<table>
+<tr><th></th><th>Leaf (brand-matching)</th><th>Non-leaf (math-modeling)</th></tr>
+<tr><td>CLAUDE.md says</td><td>"I match brands"</td><td>"I explore, route, manage"</td></tr>
+<tr><td>Has agents.md?</td><td>No</td><td>Yes</td></tr>
+<tr><td>Who does the work?</td><td>working/ agent</td><td>Sub-agents (leaf agents)</td></tr>
+<tr><td>Who checks quality?</td><td>plan-verify/</td><td>Math-modeling reads reports</td></tr>
+<tr><td>How it grew</td><td>1 task &rarr; 30 iterations &rarr; specs + tools</td><td>Ideas &rarr; experiments &rarr; sub-agents</td></tr>
+<tr><td>Infrastructure used</td><td>plan-verify template + knowledge-base</td><td>brain pattern (agents.md + routing)</td></tr>
+</table>
+
+<p>Same contract (TASK.md down, REPORT.md up). Different roles. The leaf acts. The non-leaf directs. Both check their own scope. Both grew from use, not from design.</p>
+
+<h2>95. The full system</h2>
 
 <div class="fig"><b>── INFRASTRUCTURE ──</b>
 
